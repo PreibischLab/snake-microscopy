@@ -1,11 +1,17 @@
 function dual2SingleContour1() %edgeImg, Xs, Ys, Xs1, Ys1)
 
-    
-    %% Pre Stuff
+    close all;
+
+%     % Deleting initial snakes from figure 
+%     figureChildren = get(gca, 'children');
+%     delete(figureChildren(end-2:end-1)); 
+
     load('exampleDualResult.mat');
     img  = imread('n1.tiff');
+    % findEdges gets img, sigma and the threshold for after sobel
     img = findEdges(img, 4, 30);
     
+    % finding equaly distanced points on the small snake
     polyg = double(poly2mask(Xs, Ys, size(img,1), size(img,2)));
     [tempX, tempY] = find(polyg,1);
     edgePolyg = bwtraceboundary(polyg, [tempX tempY],'N');
@@ -14,36 +20,79 @@ function dual2SingleContour1() %edgeImg, Xs, Ys, Xs1, Ys1)
     sample = floor(size(edgePolyg,1)/nPoints);
     Xs = edgePolyg(1:sample:end, 2);
     Ys = edgePolyg(1:sample:end, 1);
-    
-    
-    polyg = double(poly2mask(Xs1, Ys1, size(img,1), size(img,2)));
-    [tempX, tempY] = find(polyg,1);
-    edgePolyg = bwtraceboundary(polyg, [tempX tempY],'N');
-    edgePolyg = edgePolyg(1:end-1,:);
-    nPoints = size(edgePolyg,1) / 30;
-    sample = floor(size(edgePolyg,1)/nPoints);
-    Xs1 = edgePolyg(1:sample:end, 2);
-    Ys1 = edgePolyg(1:sample:end, 1);
-    
 
     % deciding on n and m
     n = size(Xs,1);
     m = 10;
     
-        % Deleting points in big snake so 2 snakes will have same size
-    points2delete = size(Xs1,1) - n;
-	whichPoints2Delete = randsample(size(Xs1,1),points2delete);
-	Xs1(whichPoints2Delete) = [];
-    Ys1(whichPoints2Delete) = [];
+    % Finding the line equation between 2 points in the 2 snakes
+    % First finding the norm from the small snake
+    [NsX, NsY] = addNormToFindLine(Xs,Ys);
+    % Calculating the slope of the desired lines
+    slopes = NsY ./ NsX;
+    % Finding the constant b of the line equation
+    Bs = Ys - slopes .* Xs;
+ 
+    % Finding all the points on big snake
+    polyg = double(poly2mask(Xs1, Ys1, size(img,1), size(img,2)));
+    [tempX, tempY] = find(polyg,1);
+    edgePolyg = bwtraceboundary(polyg, [tempX tempY],'N');
+    edgePolyg = fliplr(edgePolyg(1:end-1,:));
+
+    % Init big snake points
+    Xs1 = nan(n,1);
+    Ys1 = nan(n,1);
     
-    %Creating a line of points between every closest 2 points in 2 snakes
-    figure; imshow(img, []); hold on; impixelinfo;
+%     % To prove we found the right slopes and bs (and i did!!! this works!!)
+%     for i= 1:size(img,1)
+%         Yssss(i) = slopes(3)*i + Bs(3);
+%     end
+%     figure;imshow(img,[]);hold on;
+%     plot((1:734),Yssss,'--o');
+
+    % Find the best corresponding point in big snake
+    for i= 1:n
+       Xs1(i) = 10000;
+       Ys1(i) = 10000;
+
+       for j= 1:size(edgePolyg,1)
+           if((slopes(i)*edgePolyg(j,1)+Bs(i)-edgePolyg(j,2) < 3) && (slopes(i)*edgePolyg(j,1)+Bs(i)-edgePolyg(j,2) > -3))
+               tempX = edgePolyg(j,1);
+               tempY = edgePolyg(j,2);   
+               if (sqrt((tempX-Xs(i))^2 + (tempY-Ys(i))^2) < sqrt((Xs1(i)-Xs(i))^2 + (Ys1(i)-Ys(i))^2))
+                   % 150 is a hack!!
+                   if (((i>1) && (sqrt((Xs1(i-1)-Xs(i))^2 + (Ys1(i-1)-Ys(i))^2)<150)) || (i==1))
+                       if i>1
+                       end
+                        Xs1(i) = tempX;
+                        Ys1(i) = tempY;
+                   end
+               end
+           end
+       end
+    end
     
+    % In case we didn't find corresponding point in big snake through the norm line
+    % find it by closes point
+    % This wasn't tested because no privious run had such edge case
+    for i=1:n
+        if (Xs1(i)==10000)
+            for j=1:size(edgePolyg,1)
+                if (sqrt((Xs(i)-edgePolyg(j,1))^2 + (Ys(i)-edgePolyg(j,2))^2) < sqrt((Xs(i)-Xs1(i))^2 + (Ys(i)-Ys1(i))^2))
+                    Xs1(i) = edgePolyg(j,1);
+                    Ys1(i) = edgePolyg(j,2);
+                end
+            end
+        end
+    end
+    
+    % finding all points between the two snakes:
+    figure; imshow(img,[]); hold on;
     for i= 1:n
        X(i,:) = linspace(Xs(i),Xs1(i),m); 
        Y(i,:) = linspace(Ys(i),Ys1(i),m); 
        
-%        plot(X(i,:), Y(i,:), '--*')
+       plot(X(i,:), Y(i,:), '--*')
     end
     
     
@@ -60,7 +109,6 @@ function dual2SingleContour1() %edgeImg, Xs, Ys, Xs1, Ys1)
     pointsEdges = findPointsEdges(img, Xmat, Ymat);
     
     % Init saved path
-    savedPathCost = nan(m, m, n);
     savedPathLocation = nan(m, m, n);
     
     % Finding the costs of all options in next step:
