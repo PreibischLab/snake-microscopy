@@ -3,13 +3,6 @@ function [Xs, Ys] = resampleSnake(img, Xs, Ys)
     polyg = double(poly2mask(Xs, Ys, size(img,1), size(img,2)));
     [tempX, tempY] = find(polyg,1);
     
-    % There is a rare error I need to understand - what's in tempX and tempY when happens
-    if ~(tempX > 0)
-        tempX
-        tempY
-        error('resampling error- need to understand this error');
-    end
-    
     edgePolyg = bwtraceboundary(polyg, [tempX tempY],'N');
     edgePolyg = edgePolyg(1:end-1,:);
     
@@ -26,5 +19,9 @@ function [Xs, Ys] = resampleSnake(img, Xs, Ys)
 
     Xs = edgePolyg(1:sample:end, 2);
     Ys = edgePolyg(1:sample:end, 1);
+    
+    if (nPoints<10) 
+        error('snake is too small! Not enough snake points');
+    end
     
 end

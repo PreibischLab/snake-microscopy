@@ -9,26 +9,30 @@ close all;  % Close all figures
 %% Setting the snakes parameters
 
 % Choose image file
-img = imread('wing.png');
+img = imread('../microscopyImages/z=12.png');
 if (ndims(img)>2)
-    img = img(:,:,1);
+    img = rgb2gray(img);
 end
+img = imresize(img,0.4);
+[img, rect] = imcrop(img);
+imwrite(img, 'cell.tiff');
+
 % Type of snake implementation - KASS, BALLOON, DUAL, GREEDY
 method = 'BALLOON';
 % Initial snake shape - either 'MANUAL' or radius of circle (e.g. 50) 
 % If dual - array with 2 values - first kass and then for balloon snake
-initShape = {'30'};
+initShape = {'60'};
 % Gaussian filter sigma (Standard Deviation)
-sigma = 2.5;
+sigma = 2;
 % Threshold on sobel (before normalization):
-thrSobel = 15;
+thrSobel = 30;
 % Alpha - weight of elasticity:
-alpha = [0.001 0.01];
+alpha = [0.015];
 % Beta - weight of curvature 
-beta = [0.000055 0.015];
+beta = [0.0000000000000000001];
 
 % Rho - weight of expention (for Balloon & dual)
-rho = 0.069;
+rho = 0.2;
 
 % Delta - step size (not used in greedy).
 delta = 1;

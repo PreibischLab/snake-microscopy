@@ -1,4 +1,4 @@
-function dual2SingleContour1() %edgeImg, Xs, Ys, Xs1, Ys1)
+function dual2SingleContour() %edgeImg, Xs, Ys, Xs1, Ys1)
 
     close all;
 
@@ -6,17 +6,24 @@ function dual2SingleContour1() %edgeImg, Xs, Ys, Xs1, Ys1)
 %     figureChildren = get(gca, 'children');
 %     delete(figureChildren(end-2:end-1)); 
 
-    load('exampleDualResult.mat');
-    img  = imread('n1.tiff');
+    img = imread('../microscopyImages/z=12.png');
+    img = imresize(img,0.4);
+    load('14.mat');
+    Xs1 = cell2mat(Xss(30));
+    Ys1 = cell2mat(Yss(30));
+    load('4.mat');
+    Xs = cell2mat(Xss(50));
+    Ys = cell2mat(Yss(50));
+    
     % findEdges gets img, sigma and the threshold for after sobel
-    img = findEdges(img, 4, 30);
+    img = findEdges(img, 3.5, 30);
     
     % finding equaly distanced points on the small snake
     polyg = double(poly2mask(Xs, Ys, size(img,1), size(img,2)));
     [tempX, tempY] = find(polyg,1);
     edgePolyg = bwtraceboundary(polyg, [tempX tempY],'N');
     edgePolyg = edgePolyg(1:end-1,:);
-    nPoints = size(edgePolyg,1) / 30;
+    nPoints = size(edgePolyg,1) / 20;
     sample = floor(size(edgePolyg,1)/nPoints);
     Xs = edgePolyg(1:sample:end, 2);
     Ys = edgePolyg(1:sample:end, 1);
@@ -86,24 +93,30 @@ function dual2SingleContour1() %edgeImg, Xs, Ys, Xs1, Ys1)
         end
     end
     
+   [NsX, NsY] = addExpandingForce (Xs1, Ys1);
+    
+    Xs1 = round(Xs1 + 40 * NsX);
+    Ys1 = round(Ys1 + 40 * NsY);
+%     figure;imshow(img,[]);hold on;
+%     plot(Xs1,Ys1,'--*');
+    
     % finding all points between the two snakes:
-    figure; imshow(img,[]); hold on;
+%     figure; imshow(img,[]); hold on;
     for i= 1:n
        X(i,:) = linspace(Xs(i),Xs1(i),m); 
        Y(i,:) = linspace(Ys(i),Ys1(i),m); 
        
-       plot(X(i,:), Y(i,:), '--*')
+%         plot(X(i,:), Y(i,:), '--*')
     end
     
     
     %% Start finding path of least cost by Viterbi Algorithm 
-    
     % Init:
     % The arbitrary starting point will be at a narrow range
     [minDis, i] = min(sqrt((X(:,1) - X(:,end)).^2 + (Y(:,1) - Y(:,end)).^2));
     % Arraigning X and Y accordingly
-    Xmat = round([X(i:end,:); X(1:i-1,:)]);
-    Ymat = round([Y(i:end,:); Y(1:i-1,:)]);
+    Xmat = round([X(7:end,:); X(1:7-1,:)]);
+    Ymat = round([Y(7:end,:); Y(1:7-1,:)]);
     
     % Finding the edge (gradient) at each point:
     pointsEdges = findPointsEdges(img, Xmat, Ymat);
@@ -114,7 +127,7 @@ function dual2SingleContour1() %edgeImg, Xs, Ys, Xs1, Ys1)
     % Finding the costs of all options in next step:
     E = findCosts(Xmat, Ymat, pointsEdges(2,:), 2);
     % Maybe can add cost of Eext in first step and add to cost
-    savedPathLocation(:,:,1) = 5;
+    savedPathLocation(:,:,1) = 2;
     
     % Finding the min cost when first step = 5 (arbitrary first step)
     % In prevBest matrix 1st D is for 2rd step and 2nd D is 3 step
@@ -146,6 +159,9 @@ function dual2SingleContour1() %edgeImg, Xs, Ys, Xs1, Ys1)
        Xs(i) = Xmat(i,bestLoc(i));
        Ys(i) = Ymat(i,bestLoc(i));
     end
-    
-    plot(Xs, Ys, '--o')
+
+    %img = imread('../microscopyImages/z=12.png');
+    %img = imresize(img,0.4);
+    figure;imshow(img,[]);hold on;plot(Xs, Ys, '--*');
+    save('39.mat','Xs','Ys');
 end

@@ -10,10 +10,8 @@
 
 % The function returns the initial snake - the x and y of nPoints points.
 
-function [Xs, Ys] = setManualSnake(img)
+function [Xs, Ys] = setManualSnake(img, n)
     
-    % Number of snake points for the user to insert:
-    n=10;
     % Init empty vectors Xs and Ys will hold the values of the points entered by
     % the user
     Xs(1:n) = NaN;
@@ -34,7 +32,5 @@ function [Xs, Ys] = setManualSnake(img)
     delete(children(1:n));
     
     %% Create Snake From User Input Contour
-    
-    [Xs, Ys] = resampleSnake(img, Xs, Ys);
     
 end

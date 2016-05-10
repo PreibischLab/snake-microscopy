@@ -28,7 +28,8 @@ function initSnake(img, method, initShape, sigma, thrSobel, alpha, beta, rho, de
         % If the user chose to set the snake manually:
         if strcmp(initShape(i), 'MANUAL')
             
-            [Xs, Ys] = setManualSnake(img);
+            [Xs, Ys] = setManualSnake(img, 10);
+            [Xs, Ys] = resampleSnake(img, Xs, Ys);
         
         % If user chose to have a circle as initial snake:
         else
@@ -88,6 +89,7 @@ function initSnake(img, method, initShape, sigma, thrSobel, alpha, beta, rho, de
             rho = 0;
         end
         [Xs, Ys] = snakeIterations(edgeImg, Xs, Ys, alpha(1), beta(1), delta, rho, snakeGif);
+        initBigSnake(edgeImg, Xs, Ys);
         
         if (strcmp(method, 'DUAL'))
             rho = 0;
