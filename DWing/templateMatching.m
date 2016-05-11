@@ -1,7 +1,7 @@
 %% This function finds correlations through a fourier transform 
 % AKA template matching
 
-function c =  templateMatching(img, x, y, templateSize)
+function c =  templateMatching(img, x, y, templateSize, sigma)
 % function templateMatching(img, pointsTemplates)
 
 %     img = imread('letters2.jpg');
@@ -15,11 +15,12 @@ function c =  templateMatching(img, x, y, templateSize)
 %     end
     
     % Extract template from template image:
-    templateImage = '../../DWingPNG/template_affine.png';
+    templateImg = imread('../../DWingPNG/template_affine.png');
+    templateImg = imgaussfilt(templateImg, sigma);
     temStartX = x-templateSize/2;
     temStartY = y-templateSize/2;
-    template = templateImage(temStartY:temStartY+templateSize-1, temStartX:temStartX+templateSize-1);
-    figure; imshow(template,[]); impixelinfo;
+    template = templateImg(temStartY:temStartY+templateSize-1, temStartX:temStartX+templateSize-1);
+    %%figure; imshow(template,[]); impixelinfo;
 
     ix = size(img, 2); 
     iy = size(img, 1);
@@ -30,6 +31,6 @@ function c =  templateMatching(img, x, y, templateSize)
     Gi = fft2(img);
     Gt = fft2(template, iy, ix);
     c = real(ifft2((Gi.*conj(Gt))./abs(Gi.*conj(Gt))));
-    figure; imshow(c,[]);
+    %%figure; imshow(c,[]);
 
 end

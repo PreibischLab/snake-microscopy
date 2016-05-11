@@ -11,7 +11,7 @@ addpath(genpath('../CeleEM'));
 %% Setting the snakes parameters
 
 % Choose image file
-folder = '../../DWing_registered/';
+folder = '../../DWingPNG/';
 fileNamePre = 'brightfield_affine0000';
 % 
 % for i=1:23
@@ -26,7 +26,7 @@ fileNamePre = 'brightfield_affine0000';
 % img = imread([folder 'template_affine.tif']);
 % figure; imshow(img,[]);
 
-img = imread([folder 'brightfield_affine00000.tif']);
+img = imread([folder 'brightfield_affine00000.png']);
 % NEED TO ADD - IMAGE RESIZE: img = imresize(img, 0.25);
 figure; imshow(img,[]); hold on;
 
