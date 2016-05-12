@@ -32,5 +32,11 @@ function c =  templateMatching(img, x, y, templateSize, sigma)
     Gt = fft2(template, iy, ix);
     c = real(ifft2((Gi.*conj(Gt))./abs(Gi.*conj(Gt))));
     %%figure; imshow(c,[]);
+    
+    for i=ix:-1:1+(tx/2)
+        for j=iy:-1:1+(ty/2)
+            c(i,j) = c(i-(tx/2), j-(ty/2));
+        end
+    end
 
 end

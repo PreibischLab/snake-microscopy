@@ -103,6 +103,7 @@ save('adjDist','adjDist');
 % Plot the connections
 adjCurve = nan(n,3);
 for i= 1:n
+    
     adj1X = Xs(adjMat(i,1));
     adj1Y = Ys(adjMat(i,1));
     adj2X = Xs(adjMat(i,2));

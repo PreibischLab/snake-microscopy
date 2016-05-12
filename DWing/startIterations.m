@@ -1,4 +1,4 @@
-function startIterations(img, alphas, betas, gammas, templateSize, hoodSize, sigma)
+function startIterations(img, alphas, betas, gammas, templateSize, hoodSize, sigma, snakeGif)
     
     % Loading information from template 
     % Starting snake:
@@ -22,6 +22,13 @@ function startIterations(img, alphas, betas, gammas, templateSize, hoodSize, sig
     end
     
     for iter= 1:3000 %iterations
+        if (mod(iter, 100)==0)
+            text(50, 50,['iterations=', num2str(iter)],'FontSize',18,'BackgroundColor','black','Color','white');
+            scatter(Xs, Ys);
+            drawInGif(snakeGif,2);
+            figureChildren = get(gca, 'children');
+            delete(figureChildren(1:2)); 
+        end
         
         % For each point in the snake do..
         % This for loop will be changed to randomly pick snake points
@@ -36,6 +43,7 @@ function startIterations(img, alphas, betas, gammas, templateSize, hoodSize, sig
             for x = xmin-hoodSize:xmin+hoodSize
                 countY = 1;
                 for y = ymin-hoodSize:ymin+hoodSize
+                     
                     % Finding the contour and curvature values for the current hood point
                     hoodCont(countX, countY) = calcContEnergy(x, y, p, Xs, Ys, adjMat, adjDist);
                     hoodCurv(countX, countY) = calcCurvEnergy(x, y, p, Xs, Ys, adjMat, adjCurve);
@@ -50,21 +58,21 @@ function startIterations(img, alphas, betas, gammas, templateSize, hoodSize, sig
             hoodCurv = hoodCurv/max(hoodCurv(:));
             
             if (max(hoodCorr(:) ~= 0))
-                hoodCorr = hoodCorr/max(hoodCorr(:));
+                hoodCorr = -hoodCorr/max(hoodCorr(:));
             end
 
 
-            emin = alphas(p) * hoodCont(hoodSize+1, hoodSize+1);
-            emin = emin + (beta(p) * hoodCurv(hoodSize+1, hoodSize+1));
-            emin = emin + (gamma(p) * hoodCorr(hoodSize+1, hoodSize+1));
+            emin = alphas * hoodCont(hoodSize+1, hoodSize+1);
+            emin = emin + (betas * hoodCurv(hoodSize+1, hoodSize+1));
+            emin = emin + (gammas * hoodCorr(hoodSize+1, hoodSize+1));
 
             n = hoodSize*2+1;
             newLocation = 0;
             for j = 1:n
                 for k = 1:n
-                    tempEMin = alphas(p) * hoodCont(j,k);
-                    tempEMin = tempEMin + (betas(p) * hoodCurv(j,k));
-                    tempEMin = tempEMin + (gammas(p) * hoodCorr(j,k));
+                    tempEMin = alphas * hoodCont(j,k);
+                    tempEMin = tempEMin + (betas * hoodCurv(j,k));
+                    tempEMin = tempEMin + (gammas * hoodCorr(j,k));
 
                     if (tempEMin < emin)
                         emin = tempEMin;
