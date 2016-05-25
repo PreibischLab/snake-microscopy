@@ -1,4 +1,4 @@
-function startIterations(img, alphas, betas, gammas, templateSize, hoodSize, sigma, snakeGif)
+function startIterations(img, alphas, betas, gammas, hoodSize, templates, snakeGif)
     
     % Loading information from template 
     % Starting snake:
@@ -18,18 +18,20 @@ function startIterations(img, alphas, betas, gammas, templateSize, hoodSize, sig
    
     % find the correlation image for each landmark point:
     for p = 1:nPoints
-        corrImages(:,:,p) = templateMatching(img, Xs(p), Ys(p), templateSize, sigma);
+        corrImages(:,:,p) = templateMatching(img, templates(:,:,p));
     end
-    
-    for iter= 1:3000 %iterations
-        if (mod(iter, 100)==0)
+
+    for iter= 1:20 %iterations
+%         if (mod(iter, 100)==0)
             text(50, 50,['iterations=', num2str(iter)],'FontSize',18,'BackgroundColor','black','Color','white');
-            scatter(Xs, Ys);
-            drawInGif(snakeGif,2);
+            scatter(Xs, Ys, 'filled', 'g');
+            impixelinfo;
+            pause();
+%             drawInGif(snakeGif,2);
             figureChildren = get(gca, 'children');
             delete(figureChildren(1:2)); 
-        end
-        
+%         end
+%         
         % For each point in the snake do..
         % This for loop will be changed to randomly pick snake points
         for p=1:nPoints
@@ -52,15 +54,13 @@ function startIterations(img, alphas, betas, gammas, templateSize, hoodSize, sig
                 end
                 countX = countX+1;
             end
-            hoodCorr = corrImages(xmin-hoodSize:xmin+hoodSize, ymin-hoodSize:ymin+hoodSize, p);
+            
+            hoodCorr = corrImages(ymin-hoodSize:ymin+hoodSize, xmin-hoodSize:xmin+hoodSize, p);
+            hoodCorr(hoodCorr<0)=0;
+            hoodCorr=1-hoodCorr;
             
             hoodCont = hoodCont/max(hoodCont(:));
             hoodCurv = hoodCurv/max(hoodCurv(:));
-            
-            if (max(hoodCorr(:) ~= 0))
-                hoodCorr = -hoodCorr/max(hoodCorr(:));
-            end
-
 
             emin = alphas * hoodCont(hoodSize+1, hoodSize+1);
             emin = emin + (betas * hoodCurv(hoodSize+1, hoodSize+1));
@@ -72,7 +72,7 @@ function startIterations(img, alphas, betas, gammas, templateSize, hoodSize, sig
                 for k = 1:n
                     tempEMin = alphas * hoodCont(j,k);
                     tempEMin = tempEMin + (betas * hoodCurv(j,k));
-                    tempEMin = tempEMin + (gammas * hoodCorr(j,k));
+                    tempEMin = tempEMin + (gammas * hoodCorr(k,j));
 
                     if (tempEMin < emin)
                         emin = tempEMin;
@@ -86,6 +86,7 @@ function startIterations(img, alphas, betas, gammas, templateSize, hoodSize, sig
                 Ys(p) = Ys(p) - ceil(n/2) + newLocation(2);
             end
         end  
+        
         
     end
 end

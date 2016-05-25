@@ -1,42 +1,19 @@
 %% This function finds correlations through a fourier transform 
 % AKA template matching
 
-function c =  templateMatching(img, x, y, templateSize, sigma)
-% function templateMatching(img, pointsTemplates)
-
-%     img = imread('letters2.jpg');
-%     if (ndims(img)>2)
-%         img = rgb2gray(img);
-%     end
-%     [rows, cols] = size(img);
-%     template = imread('k.jpeg');
-%     if (ndims(template)>2)
-%         template = rgb2gray(template);
-%     end
+function corrScore =  templateMatching(img, template)
     
-    % Extract template from template image:
-    templateImg = imread('../../DWingPNG/template_affine.png');
-    templateImg = imgaussfilt(templateImg, sigma);
-    temStartX = x-templateSize/2;
-    temStartY = y-templateSize/2;
-    template = templateImg(temStartY:temStartY+templateSize-1, temStartX:temStartX+templateSize-1);
-    %%figure; imshow(template,[]); impixelinfo;
+    % Initialization
+    img = double(img);
+    template = double(template);
 
-    ix = size(img, 2); 
-    iy = size(img, 1);
-    tx = size(template, 2); % used for bbox placement
-    ty = size(template, 1);
-
-    %// Change - Compute the cross power spectrum
-    Gi = fft2(img);
-    Gt = fft2(template, iy, ix);
-    c = real(ifft2((Gi.*conj(Gt))./abs(Gi.*conj(Gt))));
-    %%figure; imshow(c,[]);
-    
-    for i=ix:-1:1+(tx/2)
-        for j=iy:-1:1+(ty/2)
-            c(i,j) = c(i-(tx/2), j-(ty/2));
-        end
-    end
+    %% 2. correlation calculation
+    frameMean = conv2(img,ones(size(template))./numel(template),'same');
+    templateMean = mean(template(:));
+    corrPartI = conv2(img,fliplr(flipud(template-templateMean)),'same')./numel(template);
+    corrPartII = frameMean.*sum(template(:)-templateMean);
+    stdFrame = sqrt(conv2(img.^2,ones(size(template))./numel(template),'same')-frameMean.^2);
+    stdTemplate = std(template(:));
+    corrScore = (corrPartI-corrPartII)./(stdFrame.*stdTemplate);
 
 end

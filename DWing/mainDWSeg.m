@@ -11,7 +11,7 @@ addpath(genpath('../CeleEM'));
 %% Setting the snakes parameters
 
 % Choose image file
-folder = '../../DWingPNG/';
+folder = '../../DWingImages/DWingPNG/';
 fileNamePre = 'brightfield_affine0000';
 
 % for i=1:23
@@ -23,25 +23,22 @@ fileNamePre = 'brightfield_affine0000';
 %     pause();
 % end
 
-% img = imread([folder 'template_affine.tif']);
-% figure; imshow(img,[]);
-
-img = imread([folder 'brightfield_affine00001.png']);
+img = imread([folder 'brightfield_affine00006.png']);
 % NEED TO ADD - IMAGE RESIZE: img = imresize(img, 0.25);
 
 % Gaussian filter sigma (Standard Deviation)
-sigma = 4;
+sigma = 3;
 % Alpha - weight of elasticity for list of points:
-alphas = [0.05];
+alphas = [0.5];
 % Beta - weight of curvature 
-betas = [0.001];
+betas = [0.5];
 % Gamma - weight of ext force
-gammas = 10;
+gammas = 1;
 
 % template size for template matching:
 templateSize = 64;
 % Choosing hood size to which a point can move to (1->3x3, 2->5x5...)
-hoodSize = 15;
+hoodSize = 50;
 
 %% Calling the initialization of the snake
 initSnake(img, sigma, alphas, betas, gammas, templateSize, hoodSize);
