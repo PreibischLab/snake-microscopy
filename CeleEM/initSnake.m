@@ -1,11 +1,19 @@
 %% initSnake creates the initial snake according to the parameters
 % Then calls a function to start snake
 
-function initSnake(img, method, initShape, sigma, thrSobel, alpha, beta, rho, delta, hoodSize, gamma)
+function initSnake(img, method, initShape, sigma, thrSobel, alpha, beta, rho, delta, hoodSize, gamma, slice)
     
     figure;
     imshow(img);
     hold on;
+    
+%     files = dir(['nuc*' num2str(slice) '*']);
+%     files = {files(:).name};
+%     for i=1:size(files,2)
+%         load(files{i})
+%         plot(Xs,Ys,'*g');
+%     end
+    
     f = gcf();
     f.Position = [230 250 500 600];
     
@@ -28,7 +36,7 @@ function initSnake(img, method, initShape, sigma, thrSobel, alpha, beta, rho, de
         % If the user chose to set the snake manually:
         if strcmp(initShape(i), 'MANUAL')
             
-            [Xs, Ys] = setManualSnake(img, 10);
+            [Xs, Ys] = setManualSnake(img, 6);
             [Xs, Ys] = resampleSnake(img, Xs, Ys);
         
         % If user chose to have a circle as initial snake:
@@ -72,7 +80,6 @@ function initSnake(img, method, initShape, sigma, thrSobel, alpha, beta, rho, de
     %% Find Image Edges - Image Energy 
     % Apply Gaussian filter and sobel operator
     edgeImg = findEdges(img, sigma, thrSobel);
-    imshow(edgeImg,[]);
     
     %% Init gif image to save snake progress
     snakeGif = 'snakeGif.gif';
@@ -88,13 +95,46 @@ function initSnake(img, method, initShape, sigma, thrSobel, alpha, beta, rho, de
         if (strcmp(method, 'KASS'))
             rho = 0;
         end
-        [Xs, Ys] = snakeIterations(edgeImg, Xs, Ys, alpha(1), beta(1), delta, rho, snakeGif);
-        initBigSnake(edgeImg, Xs, Ys);
-        
-        if (strcmp(method, 'DUAL'))
-            rho = 0;
-            [Xs1, Ys1] = snakeIterations(edgeImg, Xs1, Ys1, alpha(2), beta(2), delta, rho, snakeGif);
-            dual2SingleContour(edgeImg, Xs, Ys, Xs1, Ys1);
+%         [Xs, Ys] = snakeIterations(edgeImg, Xs, Ys, alpha(1), beta(1), delta, rho, snakeGif);
+        inp = 1;
+        while inp ~= 0
+            [Xs, Ys] = addNormThenViterbi(edgeImg, Xs, Ys, slice);
+            slice = slice + 4
+            if (slice/100 < 1)
+                zero = '0';
+            else
+                zero = '';
+            end
+            img = imread(['/Users/ebahry/Desktop/images_em_head/z' zero num2str(slice) '.tif'],'PixelRegion',{[1250 5000],[3500 8800]});
+            edgeImg = findEdges(img, sigma, thrSobel);
+            figure; imshow(edgeImg,[]);hold on;
+            plot(Xs,Ys);
+            
+            xs1 = Xs;
+            ys1 = Ys;
+            
+            files = dir(['*' num2str(slice) '*']);
+            files = {files(:).name};
+            for i=1:size(files,2)
+                load(files{i})
+                plot(Xs,Ys,'*g');
+            end
+            
+            Xs = xs1;
+            Ys = ys1;
+%             prompt = 'go?';
+%             inp = input(prompt);
+%             if inp == 2
+                [Xs, Ys] = setManualSnake(img, 6);
+                [Xs, Ys] = resampleSnake(img, Xs, Ys);
+%             end
         end
+%         initBigSnake(edgeImg, Xs, Ys);
+%         
+%         if (strcmp(method, 'DUAL'))
+%             rho = 0;
+%             [Xs1, Ys1] = snakeIterations(edgeImg, Xs1, Ys1, alpha(2), beta(2), delta, rho, snakeGif);
+%             dual2SingleContour(edgeImg, Xs, Ys, Xs1, Ys1);
+%         end
     end
 end

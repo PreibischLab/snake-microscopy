@@ -24,7 +24,7 @@ function [Xs, Ys] = setManualSnake(img, n)
         % Saving the points entered by the user (one point at each iteration) 
         [Xs(i), Ys(i)] = ginput(1); 
         % Ploting the contour created by the user on the image (for indication)
-        plot(Xs,Ys,'--o', 'LineWidth', 2);
+        plot(Xs,Ys,'--o', 'LineWidth', 1);
     end
     
     % Deletes the ploted line 

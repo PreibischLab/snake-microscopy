@@ -16,7 +16,7 @@ function [Xs, Ys] = snakeIterations(img, Xs, Ys, alphas, betas, delta, rho, snak
     Yss = cell(50,1);
     
     %% Start iterations on snake
-    for i = 1:6000%iterations
+    for i = 1:1000%iterations
         
         % Making a gif
         if (mod(i,100) == 0)
@@ -25,10 +25,10 @@ function [Xs, Ys] = snakeIterations(img, Xs, Ys, alphas, betas, delta, rho, snak
             Yss(i/100,1) = {Ys};
             
 %             text(50, 50,['iterations=', num2str(i)],'FontSize',18,'BackgroundColor','black','Color','white');
-%             plot(Xs, Ys, 'm', 'LineWidth', 2);
+             plot(Xs, Ys, 'm', 'LineWidth', 2);
 %             drawInGif(snakeGif,2);
-%             figureChildren = get(gca, 'children');
-%             delete(figureChildren(1:2)); 
+             figureChildren = get(gca, 'children');
+             delete(figureChildren(1:1)); 
         end
 
         % Every few iterations to resample the snake points to keep equal distance
@@ -60,7 +60,7 @@ function [Xs, Ys] = snakeIterations(img, Xs, Ys, alphas, betas, delta, rho, snak
         
     end
     
-    save('40.mat','Xss','Yss');
+    save('1_1.mat','Xss','Yss');
     plot(Xs, Ys, 'm', 'LineWidth', 2);
     
 end

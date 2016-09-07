@@ -20,7 +20,7 @@ function [Xs, Ys] = resampleSnake(img, Xs, Ys)
     Xs = edgePolyg(1:sample:end, 2);
     Ys = edgePolyg(1:sample:end, 1);
     
-    if (nPoints<10) 
+    if (nPoints<2) 
         error('snake is too small! Not enough snake points');
     end
     

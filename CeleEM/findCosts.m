@@ -1,7 +1,4 @@
-function E = findCosts(X, Y, Eext, i)
-    
-    % For normalization and choosing forces weights
-    lambda = 0.2;
+function E = findCosts(X, Y, Eext, i, lambda)
 
     m = size(X, 2);
     

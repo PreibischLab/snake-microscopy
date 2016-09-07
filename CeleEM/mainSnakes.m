@@ -7,29 +7,34 @@ clear; % Clear workspace variables.
 close all;  % Close all figures
 
 %% Setting the snakes parameters
+%slice = 254;
+% Choose image file
+%img = imread(['/Users/ebahry/Desktop/images_em_head/z' num2str(slice) '.tif'],'PixelRegion',{[1250 5000],[3500 8800]});
+% if (ndims(img)>2)
+%     img = rgb2gray(img);
+% end
+% img = imresize(img,0.4);
+% [img, rect] = imcrop(img);
+% imwrite(img, 'cell.tiff');
+%img=img(3200:8800,1000:5000);
+% imshow(img);impixelinfo;
 
 % Choose image file
-img = imread('../microscopyImages/z=12.png');
-if (ndims(img)>2)
-    img = rgb2gray(img);
-end
-img = imresize(img,0.4);
-[img, rect] = imcrop(img);
-imwrite(img, 'cell.tiff');
+img = imread(['../classification_result.tif'],1);
 
-% Type of snake implementation - KASS, BALLOON, DUAL, GREEDY
+% Type of snake implementation - KASS, BALLOON, DUAL
 method = 'BALLOON';
 % Initial snake shape - either 'MANUAL' or radius of circle (e.g. 50) 
 % If dual - array with 2 values - first kass and then for balloon snake
-initShape = {'60'};
+initShape = {'50'};
 % Gaussian filter sigma (Standard Deviation)
-sigma = 2;
+sigma = 3.5;
 % Threshold on sobel (before normalization):
 thrSobel = 30;
 % Alpha - weight of elasticity:
 alpha = [0.015];
 % Beta - weight of curvature 
-beta = [0.0000000000000000001];
+beta = [0.01];
 
 % Rho - weight of expention (for Balloon & dual)
 rho = 0.2;
@@ -48,4 +53,4 @@ gamma = 5;
 %(setMultiInitSnakes(img, nPoints));
 
 %% Calling the initialization of the snake
-initSnake(img, method, initShape, sigma, thrSobel, alpha, beta, rho, delta, hoodSize, gamma);
+initSnake(img, method, initShape, sigma, thrSobel, alpha, beta, rho, delta, hoodSize, gamma, slice);

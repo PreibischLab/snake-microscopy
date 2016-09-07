@@ -24,7 +24,7 @@ function [NsX, NsY] = addNormToFindLine(Xs, Ys)
     % calcs the actual distance between each 2 points
     magnitude = sqrt((DsX.^2) + (DsY.^2));
     
-    if (any(isnan(magnitude)))
+    if (any(isnan(magnitude)) || (any(magnitude==0))) 
         magnitude
         error('magnitue error in finding norm');
     end
@@ -32,5 +32,9 @@ function [NsX, NsY] = addNormToFindLine(Xs, Ys)
     % Since we want the norm - divide by the distance
     NsX = - DsX ./ magnitude;
     NsY = - DsY ./ magnitude;
+    
+    if any(isnan(NsX))
+        NsX
+    end
     
 end
