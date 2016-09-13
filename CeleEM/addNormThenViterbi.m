@@ -10,9 +10,9 @@ function [Xs, Ys, XsInner, XsOuter, YsInner, YsOuter] = addNormThenViterbi(orgIm
     
     % Init n and m
     n = size(Xs,1);
-    m = 5;
+    m = 6;
     % Init norm length
-    normLength = 5;
+    normLength = 6;
     
     % Find the norm
     [NsX, NsY] = addNormToFindLine(Xs, Ys);
