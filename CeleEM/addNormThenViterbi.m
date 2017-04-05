@@ -12,7 +12,7 @@ function [Xs, Ys, XsInner, XsOuter, YsInner, YsOuter] = addNormThenViterbi(orgIm
     n = size(Xs,1);
     m = 6;
     % Init norm length
-    normLength = 6;
+    normLength = 20;
     
     % Find the norm
     [NsX, NsY] = addNormToFindLine(Xs, Ys);
