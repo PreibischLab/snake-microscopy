@@ -26,11 +26,18 @@ function startIterations(img, alphas, betas, gammas, hoodSize, templates, snakeG
             text(50, 50,['iterations=', num2str(iter)],'FontSize',18,'BackgroundColor','black','Color','white');
             scatter(Xs, Ys, 'filled', 'g');
             impixelinfo;
-            pause();
+%             pause();
 %             drawInGif(snakeGif,2);
+         if iter ==11
+             iter
+         else
             figureChildren = get(gca, 'children');
-            delete(figureChildren(1:2)); 
+            delete(figureChildren(1:2));
+         end
+              
 %         end
+
+
 %         
         % For each point in the snake do..
         % This for loop will be changed to randomly pick snake points

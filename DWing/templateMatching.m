@@ -4,6 +4,7 @@
 function corrScore =  templateMatching(img, template)
     
     % Initialization
+    img = rgb2gray(img);
     img = double(img);
     template = double(template);
 
