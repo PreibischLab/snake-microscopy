@@ -16,7 +16,7 @@ function initSnake(img, method, initShape, sigma, thrSobel, alpha, beta, rho, de
 %         plot(Xs,Ys,'*g');
 %     end
     
-    f = gcf();
+    f = gcf;
     f.Position = [230 250 500 600];
     
     % If we chose the method dual snake we need to draw 2 initial snakes
