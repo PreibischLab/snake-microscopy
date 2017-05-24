@@ -7,7 +7,7 @@ clc;    % Clear the command window.
 clear; % Clear workspace variables.
 close all;  % Close all figures
 
-addpath(genpath('../CeleEM'));
+% addpath(genpath('../CeleEM'));
 
 %% folder and filename paramters
 
