@@ -4,7 +4,9 @@
 function initSnake(img, method, initShape, sigma, thrSobel, alpha, beta, rho, delta, hoodSize, gamma, slice)
     
     figure;
-    imshow(img);
+    imagesc(img);
+    colormap('gray')
+    axis equal tight
     hold on;
     
 %     files = dir(['nuc*' num2str(slice) '*']);
