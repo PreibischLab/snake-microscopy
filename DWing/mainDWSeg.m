@@ -13,6 +13,8 @@ addpath(genpath('../CeleEM'));
 % Choose image file
 folder = '../../DWingImages/DWingPNG/';
 fileNamePre = 'brightfield_affine0000';
+templateName = 'template_affine.tif';
+landmarkName = 'template_affine_points.txt';
 
 % for i=1:23
 %     if i==10
@@ -23,7 +25,10 @@ fileNamePre = 'brightfield_affine0000';
 %     pause();
 % end
 
-img = imread([folder 'brightfield_affine00002A.png']);
+img       = imread(  [folder 'brightfield_affine00006.tif']);
+template  = imread(  [folder 'template_affine.tif']);
+landmarks = dlmread( [folder landmarkName], ',');
+
 % NEED TO ADD - IMAGE RESIZE: img = imresize(img, 0.25);
 
 % Gaussian filter sigma (Standard Deviation)
@@ -41,4 +46,4 @@ templateSize = 64;
 hoodSize = 50;
 
 %% Calling the initialization of the snake
-initSnake(img, sigma, alphas, betas, gammas, templateSize, hoodSize);
+initSnake(img, template, landmarks, sigma, alphas, betas, gammas, templateSize, hoodSize);

@@ -1,9 +1,7 @@
 %% initSnake creates the initial snake according to the parameters
 % Then calls a function to start snake
 
-function initSnake(img, sigma, alphas, betas, gammas, templateSize, hoodSize)
-    
-    load('landmarks');
+function initSnake(img, template, landmarks, sigma, alphas, betas, gammas, templateSize, hoodSize)
     
     %% Apply Gaussian 
     img = imgaussfilt(img, sigma);
@@ -11,7 +9,6 @@ function initSnake(img, sigma, alphas, betas, gammas, templateSize, hoodSize)
     
     subplot(1,3,2);
     imshow(img,[]); hold on;
-    template = imread('../../DWingImages/DWingPNG/template_affine.png');
     imshow(template); hold on;
     scatter(landmarks(:,1), landmarks(:,2), 'filled', 'b');
     pos = get(gca, 'Position');
