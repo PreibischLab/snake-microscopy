@@ -23,7 +23,7 @@ fileNamePre = 'brightfield_affine0000';
 %     pause();
 % end
 
-img = imread([folder 'brightfield_affine00006.png']);
+img = imread([folder 'brightfield_affine00002A.png']);
 % NEED TO ADD - IMAGE RESIZE: img = imresize(img, 0.25);
 
 % Gaussian filter sigma (Standard Deviation)
