@@ -8,9 +8,18 @@ function initSnake(img, template, landmarks, sigma, alphas, betas, gammas, templ
     figure; 
     
     subplot(1,3,2);
-    imshow(img,[]); hold on;
-    imshow(template); hold on;
+    
+    imagesc(img); 
+    axis equal tight
+    colormap('gray')
+    hold on;
+    
+    imagesc(template); 
+    axis equal tight
+    colormap('gray')
+    hold on;
     scatter(landmarks(:,1), landmarks(:,2), 'filled', 'b');
+    
     pos = get(gca, 'Position');
     pos(1) = 0;
     pos(3) = 0.33;
