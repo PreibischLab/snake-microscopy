@@ -42,6 +42,7 @@ gammas = 1;
 
 % template size for template matching:
 templateSize = 64;
+
 % Choosing hood size to which a point can move to (1->3x3, 2->5x5...)
 hoodSize = 50;
 
