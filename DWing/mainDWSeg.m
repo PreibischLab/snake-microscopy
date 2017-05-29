@@ -98,28 +98,6 @@ for i=1:size(landmarks,1)
     landmarkNew(i,:) = hPoints{i}.getPosition();
 end
 
-
-%% snake parameters
-sigma  = 3;   % Gaussian filter sigma (Standard Deviation)
-
-% [alphas betas gammas]
-% Alpha - weight of elasticity for list of points (distance)
-% Beta  - weight of curvature (abs angular difference)
-% Gamma - weight of ext force
-semiLdmkParams = [ 0.5   1     0.8 ];
-LdmkParams     = [ 0.16   0.3   1   ];
-
-paramPerLdmk = zeros(size(landmarks,1),3);
-paramPerLdmk(crossPoints ,:) = repmat(LdmkParams,    sum( crossPoints),1);
-paramPerLdmk(~crossPoints,:) = repmat(semiLdmkParams,sum(~crossPoints),1);
-paramPerLdmk(14,:) = [0.1, 0.3, 1.2];
-paramPerLdmk(1,:) = [0.1, 0.3, 1.2];
-templateSize = 32; % template size for template matching
-
-% Choosing hood size to which a point can move to (1->3x3, 2->5x5...)
-hoodSize = 50;
-
-
 %% initialize graphs
 figure(1)
 % plot template
@@ -166,8 +144,35 @@ pos(3) = 0.33;
 set(gca, 'Position', pos)
 axis equal tight
 
+%% base paramters
+
+templateSize = 32; % template size for template matching
+sigma  = 3;   % Gaussian filter sigma (Standard Deviation)
+
+% Choosing hood size to which a point can move per iteration
+% (1->3x3, 2->5x5... 30-> 61x61)
+hoodSize = 50;
+
 %% extract the smoothed neighborhood of each landmark
 templates = createTemplateImages(template, landmarks, sigma, templateSize);
+
+%% compute the shape model based on the template landmarks
+shapeModel = fEstimateShapeModel(landmarks, adjacency);
+
+% [alphas betas gammas]
+% Alpha - weight of elasticity for list of points (distance)
+% Beta  - weight of curvature (abs angular difference)
+% Gamma - weight of ext force
+semiLdmkParams = [ 0.5   1     0.8 ];
+LdmkParams     = [ 0.16   0.3   1   ];
+
+shapeModel.paramPerLdmk = zeros(size(landmarks,1),3);
+shapeModel.paramPerLdmk(crossPoints ,:) = repmat(LdmkParams,    sum( crossPoints),1);
+shapeModel.paramPerLdmk(~crossPoints,:) = repmat(semiLdmkParams,sum(~crossPoints),1);
+shapeModel.paramPerLdmk(14,:) = [0.1, 0.3, 1.2];
+shapeModel.paramPerLdmk(1,:) = [0.1, 0.3, 1.2];
+
+
 
 %% list images to process
 imgList = dir([folder '*.tif']);
@@ -193,8 +198,8 @@ for i=1:numel(imgList)
     pause(0.001)
     
     img       = imread(  [folder imgList{i}]);
-    ldmkMoving = startIterations(img, landmarks, adjacency, paramPerLdmk,...
-                                hoodSize, templates);
+    ldmkMoving = startIterations(img, shapeModel, landmarks,...
+                                      templates , hoodSize   );
                             
     % write the landmark file
     [~,n] = fileparts(imgList{i});
@@ -250,8 +255,8 @@ colormap('gray')
 
 imgName = 'brightfield_affine00009.tif';
 img       = imread(  [folder imgName]);
-ldmkMoving = startIterations(img, landmarks, adjacency, paramPerLdmk,...
-                            hoodSize, templates);
+ldmkMoving = startIterations(img, shapeModel, landmarks,...
+                                  templates , hoodSize   );
     
 %%
 clf
@@ -301,9 +306,9 @@ end
 idxNotChanged = find(all(ldmkMovingNew == ldmkMoving,2));
 
 %% actualize the position keeping selected still
-ldmkMoving = startIterations(img, landmarks, adjacency, paramPerLdmk,...
-                             hoodSize, templates,...
-                             idxNotChanged, ldmkMovingNew);
+ldmkMoving = startIterations(img, shapeModel, ldmkMovingNew,...
+                                   templates, hoodSize,... 
+                                  idxNotChanged);
 
 %% rewrite the landmarks
 
@@ -372,9 +377,9 @@ for i=1:numel(imgList)
     
     img       = imread(  [folder imgList{i}]);
     
-    ldmkMoving = startIterations(img, landmarks, adjacency, paramPerLdmk,...
-                                 hoodSize, templates,...
-                                 idxNotChanged, LdmkStack{i,2});
+    ldmkMoving = startIterations(img, shapeModel, LdmkStack{i,2},...
+                                      templates , hoodSize,... 
+                                      idxNotChanged);
                              
     [~,n] = fileparts(imgList{i});
     dlmwrite([folderLandmarks n landmarkPost] ,ldmkMoving,' ');

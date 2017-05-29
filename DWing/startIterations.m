@@ -1,83 +1,79 @@
-% function ldmkMoving = startIterations(img, ldmk, adjM, paramPerLdmk, hoodSize, templates, ldmkIdx, ldmkMoving)
+% ldmkMoving = startIterations(img, shapeModel, InitialLandmarks, templates, hoodSize, ldmkIdx)
 % Parameters:
-%   img:  - image on which the landmarks should be retrived
-%   ldmk: - landmark position on the template
-%               used for shape (distance curvature) estimation
-%               used as initial position
-%   adjM: - nLdmk x 3 matrix with the index of adjascent landmarks
-%   paramPerLdmk:
-%         - nLdmk x 3 matrix
+%   img:
+%     - image on which the landmarks should be retrived
+% 
+%   shapeModel:
+%     - structure containing :
+%        - paramPerLdmk: nLdmk x 3 matrix
 %             row: [alphas betas gammas]
 %               Alpha - weight of elasticity for list of points (distance)
 %               Beta  - weight of curvature (abs angular difference)
 %               Gamma - weight of ext force
-%   hoodSize:  
-%         - size of the neihborhood on which the calculation are made
-%                at each step
+%        - adjIndices: nLdmk x 3 matrix 
+%              index of adjascent landmarks
+%        - adjCurve: nLdmk x 2 matrix 
+%              oriented angle between L and Adj1 and Adj2
+%                                     L and Adj2 and Adj3
+%        - adjDist: nLdmk x 3 matrix 
+%              distance between landmarks and their adjascent points
+% 
+%   InitialLandmarks: 
+%        - initial landmark position
+%           if no better, use the position of landmarks on the template
+% 
 %   templates:
 %         - k x k x nLdmk matrix 
 %              stack images  of the template neighborhood that are
 %              matched through cross correlation 
+% 
+%   hoodSize:  
+%         - size of the neihborhood on which the calculation are made
+%                at each step
+% 
 %   ldmkIdx (optional): 
-%         - index of landmark that will be updated by the snake
-%               by default, every landmark is updated
-%   ldmkMoving (optional)
-%          - initial position of landmarks on img
-%               by default, the position of the template landmark is used
-%               
+%         - index of landmark that will be updated by the snake.
+%               By default, all landmarks are updated.
+%                
 
 
 
-function ldmkMoving = startIterations(img, ldmk, adjM, paramPerLdmk, hoodSize, templates, ldmkIdx, ldmkMoving)
+function ldmkMoving = startIterations(img, shapeModel, InitialLandmarks, templates, hoodSize, ldmkIdx)
 
+%% "hidden" parameters
 sigma = 3;
 bigHood = 100;
+plotEachLandmark = false(1);
 
-ldmk = round(ldmk);
+%% get the shape model information
+paramPerLdmk = shapeModel.paramPerLdmk;
+adjIndices   = shapeModel.adjIndices;
+adjCurve     = shapeModel.adjCurvature;
+adjDist      = shapeModel.adjDistance;
+
+%% deals with the inputs
+% get the number of landmaks
+nLdmk = size(InitialLandmarks, 1);
+
+InitialLandmarks = round(InitialLandmarks);
+ldmkMoving = InitialLandmarks;
+
 if (~exist('ldmkIdx','var')) || isempty(ldmkIdx)
-    ldmkIdx = 1:size(ldmk,1);
+    ldmkIdx = 1:nLdmk;
 end
-if (~exist('ldmkMoving','var')) || isempty(ldmkMoving)
-    ldmkMoving = ldmk;
-end
-ldmkMoving = round(ldmkMoving);
 
 % reshape for the for loop
 ldmkIdx = reshape(ldmkIdx,1,[]);
 
-nLdmk = size(ldmk, 1);
-ldmk = [ldmk; NaN NaN];
+
+% refer to NaN index in adjascent point as index to landmark of NaN
+% coordinates (facilitate calculations)
 ldmkMoving = [ldmkMoving; NaN NaN];
-adjM(isnan(adjM)) = nLdmk+1;
-
-% table with dim1 = ldmk index,
-%            dim2 = [X Y] coordinates 
-%            dim3 = adj index,
-% for easier calculations
-adjLdmk = reshape(ldmk(adjM,:),size(adjM,1),size(adjM,2),2);
-adjLdmk = permute(adjLdmk,[1 3 2]);
-
-%% estimate distance between adjascent points
-% distance to adjascent points
-adjDist = sqrt( sum( bsxfun(@minus, adjLdmk, ldmk(1:end-1,:)).^2 ,2) );
-adjDist = permute(adjDist,[1 3 2]);
-
-adjCurve = nan(size(adjLdmk,1),2);
-
-% oriented angle
-% (https://stackoverflow.com/questions/3486172/angle-between-3-points)
-V = bsxfun(@minus, adjLdmk(:,:,[1 2]), ldmk(1:end-1,:));
-vDot = sum(prod(V,3),2);
-vCross = diff(V(:,[2 1],1).*V(:,:,2),1,2);
-adjCurve(:,1) = atan2(vCross, vDot);
+adjIndices(isnan(adjIndices)) = nLdmk+1;
 
 
-V = bsxfun(@minus, adjLdmk(:,:,[2 3]), ldmk(1:end-1,:));
-vDot = sum(prod(V,3),2);
-vCross = diff(V(:,[2 1],1).*V(:,:,2),1,2);
-adjCurve(:,2) = atan2(vCross, vDot);
-
-%% big neighborhood of each point: max searching area (for sake of speed)
+%%  precalculate the correlation image for each landmark point:
+% big neighborhood of each point: max searching area (for sake of speed)
 xIdx = zeros(nLdmk, bigHood*2+1);
 yIdx = zeros(nLdmk, bigHood*2+1);
 for p=1:nLdmk
@@ -86,7 +82,7 @@ for p=1:nLdmk
 end
 sbigHood = size(xIdx,2);
 
-%%  find the correlation image for each landmark point:
+% calculate the cross correlation on the smaller windows
 corrImages = -ones(size(yIdx,2),size(xIdx,2),nLdmk);
 G = fspecial('gaussian',[5 5],sigma);
 imgFilter = imfilter(img,G,'same');
@@ -100,7 +96,6 @@ end
 corrImages = 1-(corrImages+1)/2;
 
 %% variable initialization and precalculations
-
 % initialize neighborhood matrices
 hoodCont = zeros(hoodSize*2+1, hoodSize*2+1);
 hoodCurv = zeros(hoodSize*2+1, hoodSize*2+1);
@@ -109,7 +104,7 @@ hoodCorr = zeros(hoodSize*2+1, hoodSize*2+1);
 % precompute the coordinates of neighborhood pixels
 [X, Y] = meshgrid((-hoodSize):(hoodSize), (-hoodSize):(hoodSize));
 hoodCoord = [X(:) Y(:)];
-NNeighbor = sum(adjM~=nLdmk+1,2);
+NNeighbor = sum(adjIndices~=nLdmk+1,2);
 
 % precompute the distance to center used in case of end points landmarks
 hoodDist  =   abs(complex(X,Y));
@@ -119,7 +114,7 @@ hoodDist  =   abs(complex(X,Y));
 % gaussian filter for the
 hg = fspecial('gaussian', [3 3], 2);
 
-%%
+%% iteration loop
 for iter= 1:20 %iterations
     ldmkMovingOld = ldmkMoving;
     for p = ldmkIdx
@@ -127,11 +122,13 @@ for iter= 1:20 %iterations
             1;
         end
         hoodCoordTmp = bsxfun(@plus, hoodCoord, ldmkMoving(p,:));
-        adjLdmkTmp = ldmkMoving(adjM(p,:),:);
+        adjLdmkTmp = ldmkMoving(adjIndices(p,:),:);
+        
         % pair distance between adjascent points and all neighboring points
         D = pdist2(hoodCoordTmp, adjLdmkTmp);
         D = bsxfun(@minus, D , adjDist(p,:));
         D(isnan(D)) = 0;
+        
         % average the distance
         hoodCont(:) = sum(abs(D),2)/NNeighbor(p);
 
@@ -172,9 +169,8 @@ for iter= 1:20 %iterations
                 % averagea of the two angles
                 hoodCurv(:) = (min(2*pi-tmp ,tmp ) + ...
                                min(2*pi-tmp2,tmp2)   )/2;
-
-
             otherwise
+                error('oups')
         end
 
         % normalize curvature and distance
@@ -207,8 +203,8 @@ for iter= 1:20 %iterations
         [~,iMin] = min(tmp(:));
         ldmkMoving(p,:) = ldmkMoving(p,:) + [X(iMin), Y(iMin)];
         
-        %% plot 
-        if true(1)%  && (p==12) % || p ==14)
+        %% plot (optional)
+        if plotEachLandmark%  && (p==12) % || p ==14)
             xWindows = X(1,:) + ldmkMovingOld(p,1);
             yWindows = Y(:,1) + ldmkMovingOld(p,2);
             current = ldmkMovingOld(p,:);
@@ -271,12 +267,12 @@ for iter= 1:20 %iterations
     % stop criterion
     
     if sum(sqrt(sum((ldmkMovingOld(1:end-1,:)-...
-                        ldmkMoving(1:end-1,:)  ).^2,2)))<1
+                     ldmkMoving(1:end-1,:)  ).^2,2))) < 1
         break
     end
 end
     
-    ldmkMoving = ldmkMoving(1:end-1,:);
+ldmkMoving = ldmkMoving(1:end-1,:);
     
     
 end
