@@ -63,11 +63,6 @@ adjDist = sqrt( sum( bsxfun(@minus, adjLdmk, ldmk(1:end-1,:)).^2 ,2) );
 adjDist = permute(adjDist,[1 3 2]);
 
 adjCurve = nan(size(adjLdmk,1),2);
-% curvature (not working ?)
-%     adjCurve(:,1) =  sqrt(sum( (sum(adjLdmk(:,:,[1 2]),3) - 2*ldmk(iLdmk,:)).^2 ,2));
-%     adjCurve(:,2) =  sqrt(sum( (sum(adjLdmk(:,:,[1 3]),3) - 2*ldmk(iLdmk,:)).^2 ,2));
-%     adjCurve(:,3) =  sqrt(sum( (sum(adjLdmk(:,:,[2 3]),3) - 2*ldmk(iLdmk,:)).^2 ,2));
-%     adjCurve(isnan(adjCurve)) = 0;
 
 % oriented angle
 % (https://stackoverflow.com/questions/3486172/angle-between-3-points)
@@ -161,9 +156,6 @@ for iter= 1:20 %iterations
                 tmp = mod(tmp- adjCurve(p,1),2*pi);
                 hoodCurv(:) = min(2*pi-tmp,tmp);
 
-%                     hoodCurv(:) = ...
-%                         abs(sqrt(sum( bsxfun(@plus, -2*hoodCoordTmp, sum(adjLdmk(p,:,[1 2]),3)).^2 ,2)) - adjCurve(p,1)) ;
-
             case 3
                 V = bsxfun(@plus, -hoodCoordTmp, adjLdmkTmpPerm(1,:,[1 2]));
                 vDot = sum(prod(V,3),2);
@@ -181,10 +173,6 @@ for iter= 1:20 %iterations
                 hoodCurv(:) = (min(2*pi-tmp ,tmp ) + ...
                                min(2*pi-tmp2,tmp2)   )/2;
 
-%                     hoodCurv(:) = ...
-%                        (abs(sqrt(sum( bsxfun(@plus, -2*hoodCoordTmp, sum(adjLdmk(p,:,[1 2]),3)).^2 ,2)) - adjCurve(p,1))+ ...
-%                         abs(sqrt(sum( bsxfun(@plus, -2*hoodCoordTmp, sum(adjLdmk(p,:,[1 3]),3)).^2 ,2)) - adjCurve(p,2))+ ...
-%                         abs(sqrt(sum( bsxfun(@plus, -2*hoodCoordTmp, sum(adjLdmk(p,:,[2 3]),3)).^2 ,2)) - adjCurve(p,3))  )/3;
 
             otherwise
         end
