@@ -83,7 +83,7 @@ adjacency(adjacency ==0 ) = NaN;
 
 crossPoints = sum(adjacency>0,2) == 3;
 
-%% **** VIS: correct landmark position
+%% **** VIS: correct landmark position of the template
 clf
 imagesc(template)
 axis equal tight
@@ -175,7 +175,7 @@ imgList = dir([folder '*.tif']);
 imgList = {imgList.name}';
 imgList = imgList(~cellfun(@isempty, strfind(imgList,fileNamePre)));
 
-%% Starting snake iterations 
+%% Initialize figures (run if needed)
 for i=2:5
     figure(i)
     clf
@@ -185,7 +185,8 @@ figure(6)
 colormap('gray')
 figure(7)
 colormap('gray')
-%% run the snake
+
+%% run the snake %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 fprintf('+ Processing image             ')
 for i=1:numel(imgList)
     str=[num2str(i) '/' num2str(numel(imgList)) ];
@@ -195,12 +196,14 @@ for i=1:numel(imgList)
     img       = imread(  [folder imgList{i}]);
     ldmkMoving = startIterations(img, landmarks, adjacency, paramPerLdmk,...
                                 hoodSize, templates);
+                            
+    % write the landmark file
     [~,n] = fileparts(imgList{i});
     dlmwrite([folderLandmarks n landmarkPost] ,ldmkMoving,' ');
 end 
-fprintf('\b-> done\n');
+fprintf('\b -> done\n');
     
-%% write a representation of images
+%% write a representation of images+ landmark marked in red
 M = ...
 [ 0 0 1 1 1 1 1 0 0 ;....
   0 0 0 1 1 1 0 0 0 ;....
@@ -235,7 +238,7 @@ for i=1:numel(imgList)
     imwrite(I, [folder 'test/' imgList{i}])
 end
 
-%% rerun
+%% rerun the snake on a single image
 for i=2:5
     figure(i)
     clf
@@ -376,7 +379,7 @@ for i=1:numel(imgList)
                              
     [~,n] = fileparts(imgList{i});
     dlmwrite([folderLandmarks n landmarkPost] ,ldmkMoving,' ');
-end 
+end
 fprintf('\b-> done\n');
     
     
