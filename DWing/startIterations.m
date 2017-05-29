@@ -1,3 +1,33 @@
+% function ldmkMoving = startIterations(img, ldmk, adjM, paramPerLdmk, hoodSize, templates, ldmkIdx, ldmkMoving)
+% Parameters:
+%   img:  - image on which the landmarks should be retrived
+%   ldmk: - landmark position on the template
+%               used for shape (distance curvature) estimation
+%               used as initial position
+%   adjM: - nLdmk x 3 matrix with the index of adjascent landmarks
+%   paramPerLdmk:
+%         - nLdmk x 3 matrix
+%             row: [alphas betas gammas]
+%               Alpha - weight of elasticity for list of points (distance)
+%               Beta  - weight of curvature (abs angular difference)
+%               Gamma - weight of ext force
+%   hoodSize:  
+%         - size of the neihborhood on which the calculation are made
+%                at each step
+%   templates:
+%         - k x k x nLdmk matrix 
+%              stack images  of the template neighborhood that are
+%              matched through cross correlation 
+%   ldmkIdx (optional): 
+%         - index of landmark that will be updated by the snake
+%               by default, every landmark is updated
+%   ldmkMoving (optional)
+%          - initial position of landmarks on img
+%               by default, the position of the template landmark is used
+%               
+
+
+
 function ldmkMoving = startIterations(img, ldmk, adjM, paramPerLdmk, hoodSize, templates, ldmkIdx, ldmkMoving)
 sigma = 3;
 ldmk = round(ldmk);
