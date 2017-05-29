@@ -114,7 +114,7 @@ paramPerLdmk(crossPoints ,:) = repmat(LdmkParams,    sum( crossPoints),1);
 paramPerLdmk(~crossPoints,:) = repmat(semiLdmkParams,sum(~crossPoints),1);
 paramPerLdmk(14,:) = [0.1, 0.3, 1.2];
 paramPerLdmk(1,:) = [0.1, 0.3, 1.2];
-templateSize = 64; % template size for template matching
+templateSize = 32; % template size for template matching
 
 % Choosing hood size to which a point can move to (1->3x3, 2->5x5...)
 hoodSize = 50;
@@ -167,8 +167,7 @@ set(gca, 'Position', pos)
 axis equal tight
 
 %% extract the smoothed neighborhood of each landmark
-
-templates = createTemplateImages(template, landmarks, 3,32);
+templates = createTemplateImages(template, landmarks, sigma, templateSize);
 
 %% list images to process
 imgList = dir([folder '*.tif']);
