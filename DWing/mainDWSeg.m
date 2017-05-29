@@ -26,11 +26,12 @@ snakeGif = 'snakeGif.gif';
 %% read landmarks
 template  = imread(  [folder          templateName ]);
 landmarks = dlmread( [folderLandmarks landmarkName],  ' ');
-adjTmp    = dlmread( [folderLandmarks adjacencyName], ',');
+adjTmp    = dlmread( [folderLandmarks adjacencyName], ' ');
 
 
 %% VIS **** display template and landmark numberd
 clf
+figure(1)
 imagesc(template)
 axis equal tight
 colormap('gray')
