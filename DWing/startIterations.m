@@ -29,7 +29,10 @@
 
 
 function ldmkMoving = startIterations(img, ldmk, adjM, paramPerLdmk, hoodSize, templates, ldmkIdx, ldmkMoving)
+
 sigma = 3;
+bigHood = 100;
+
 ldmk = round(ldmk);
 if (~exist('ldmkIdx','var')) || isempty(ldmkIdx)
     ldmkIdx = 1:size(ldmk,1);
@@ -80,7 +83,6 @@ vCross = diff(V(:,[2 1],1).*V(:,:,2),1,2);
 adjCurve(:,2) = atan2(vCross, vDot);
 
 %% big neighborhood of each point: max searching area (for sake of speed)
-bigHood = 100;
 xIdx = zeros(nLdmk, bigHood*2+1);
 yIdx = zeros(nLdmk, bigHood*2+1);
 for p=1:nLdmk
@@ -88,6 +90,7 @@ for p=1:nLdmk
     yIdx(p,:) = ((-bigHood):(bigHood)) + ldmkMoving(p,2);
 end
 sbigHood = size(xIdx,2);
+
 %%  find the correlation image for each landmark point:
 corrImages = -ones(size(yIdx,2),size(xIdx,2),nLdmk);
 G = fspecial('gaussian',[5 5],sigma);
