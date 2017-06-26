@@ -1,4 +1,4 @@
-% ldmkMoving = startIterations(img, shapeModel, InitialLandmarks, templates, hoodSize, ldmkIdx)
+% [ldmkMoving, out] = startIterations(img, shapeModel, InitialLandmarks, templates, hoodSize, ldmkIdx)
 % Parameters:
 %   img:
 %     - image on which the landmarks should be retrived
@@ -38,25 +38,82 @@
 
 
 
-function ldmkMoving = startIterations(img, shapeModel, InitialLandmarks, templates, hoodSize, ldmkIdx)
+function [ldmkMoving, out, ldmkHistory] = startIterations(img, shapeModel, templates, hoodSize, ldmkIdx)
+
+boolOutputVis = nargout > 1;
+% strVis = 'last';
+strVis = 'init';
+
+plotEachLandmark = true(1);
 
 %% "hidden" parameters
+nIterMax = 10;
 sigma = 3;
-bigHood = 100;
-plotEachLandmark = false(1);
+bigHood = 150;
 
 %% get the shape model information
-paramPerLdmk = shapeModel.paramPerLdmk;
-adjIndices   = shapeModel.adjIndices;
-adjCurve     = shapeModel.adjCurvature;
-adjDist      = shapeModel.adjDistance;
+ldmkClass        = shapeModel.ldmkClass;
+segments         = shapeModel.segments;
+relPosInSegments = shapeModel.relPosInSegments;
+weights          = shapeModel.weights;
+
+% adjacency is used only for curvature
+adjIdx          = shapeModel.adjIndices;
+adjCurveVal     = shapeModel.adjCurveVal;
+adjCurveWeight  = shapeModel.adjCurveWeight;
+
+distIdx         = shapeModel.distIdx;
+distSubVal      = shapeModel.distSubVal;
+distSubWeight   = shapeModel.distSubWeight;
+
+curvIdx         = shapeModel.curvIdx;
+curvSubVal      = shapeModel.curvSubVal;
+curvSubWeight   = shapeModel.curvSubWeight;
+
+processOrder    = shapeModel.processOrder;
+% centroidAvDist  = shapeModel.centroidAvDist;
+
+startPosition = shapeModel.startPosition;
+
+% normalize the relative weight
+adjCurveWeight = cellfun(@(x) x/sum(x(:)),adjCurveWeight,'Unif',false);
+distSubWeight  = cellfun(@(x) x/sum(x(:)),distSubWeight ,'Unif',false);
+curvSubWeight  = cellfun(@(x) x/sum(x(:)),curvSubWeight ,'Unif',false);
+
+%% checks
+
+if any(cellfun(@(x) sum(x<=0 & x>=1)>0, relPosInSegments))
+    error('relative distance must be in the interval ]0 1[')
+end
+
+idxSemi    = reshape(find(ldmkClass==3),1,[]);
+ixSegment  = zeros(size(startPosition,1),1);
+segmentAdj = zeros(size(startPosition,1),2); 
+segmentAdjrelDist = zeros(size(startPosition,1),2); 
+for i=idxSemi
+    % ind its segment
+    A = cellfun(@(Set) ismember(i,Set), segments);
+    if sum(A)~=1
+        error('semi attributed to more than one segment');
+    end
+    ixSegment(i) = find(A);
+    
+    % position within the segment
+    j = find(segments{ixSegment(i)}==i);
+    
+    % neighbour
+    segmentAdj(i,:) = [ segments{ixSegment(i)}(j-1),...
+                        segments{ixSegment(i)}(j+1) ];
+    R = relPosInSegments{ixSegment(i)};
+    segmentAdjrelDist(i,:) = [R(j) - R(j-1), R(j+1) - R(j)]; 
+end
 
 %% deals with the inputs
 % get the number of landmaks
-nLdmk = size(InitialLandmarks, 1);
+nLdmk = size(startPosition, 1);
 
-InitialLandmarks = round(InitialLandmarks);
-ldmkMoving = InitialLandmarks;
+startPosition = round(startPosition);
+ldmkMoving = startPosition;
 
 if (~exist('ldmkIdx','var')) || isempty(ldmkIdx)
     ldmkIdx = 1:nLdmk;
@@ -65,18 +122,19 @@ end
 % reshape for the for loop
 ldmkIdx = reshape(ldmkIdx,1,[]);
 
+[i,locb] = ismember(processOrder,ldmkIdx);
+idxLdmkOrder = reshape(ldmkIdx(locb(i)),1,[]);
 
-% refer to NaN index in adjascent point as index to landmark of NaN
-% coordinates (facilitate calculations)
-ldmkMoving = [ldmkMoving; NaN NaN];
-adjIndices(isnan(adjIndices)) = nLdmk+1;
-
+% add non processed landmarks at the end
+idxLdmkOrderFull = [idxLdmkOrder setdiff(1:nLdmk,idxLdmkOrder)];
 
 %%  precalculate the correlation image for each landmark point:
 % big neighborhood of each point: max searching area (for sake of speed)
 xIdx = zeros(nLdmk, bigHood*2+1);
+ixIdx = zeros(nLdmk, bigHood*2+1);
 yIdx = zeros(nLdmk, bigHood*2+1);
-for p=1:nLdmk
+iyIdx = zeros(nLdmk, bigHood*2+1);
+for p = ldmkIdx
     xIdx(p,:) = ((-bigHood):(bigHood)) + ldmkMoving(p,1);
     yIdx(p,:) = ((-bigHood):(bigHood)) + ldmkMoving(p,2);
 end
@@ -88,8 +146,10 @@ G = fspecial('gaussian',[5 5],sigma);
 imgFilter = imfilter(img,G,'same');
 for p = 1:nLdmk
     iX = (xIdx(p,:)>0) & (xIdx(p,:)<=size(img,1));
+    ixIdx(p,:) = iX;
     iY = (yIdx(p,:)>0) & (yIdx(p,:)<=size(img,2));
-    corrImages(iY,iX,p) = normxcorr2e(templates(:,:,p), imgFilter(yIdx(p,iX),xIdx(p,iY)), 'same');
+    iyIdx(p,:) = iY;
+    corrImages(iY,iX,p) = normxcorr2e(templates{p}, imgFilter(yIdx(p,iX),xIdx(p,iY)), 'same');
 end
 
 % normalize between 0 and 1 (0 best match, 1 worse match)
@@ -97,84 +157,108 @@ corrImages = 1-(corrImages+1)/2;
 
 %% variable initialization and precalculations
 % initialize neighborhood matrices
-hoodCont = zeros(hoodSize*2+1, hoodSize*2+1);
+hoodDist = zeros(hoodSize*2+1, hoodSize*2+1);
 hoodCurv = zeros(hoodSize*2+1, hoodSize*2+1);
 hoodCorr = zeros(hoodSize*2+1, hoodSize*2+1);
 
 % precompute the coordinates of neighborhood pixels
 [X, Y] = meshgrid((-hoodSize):(hoodSize), (-hoodSize):(hoodSize));
 hoodCoord = [X(:) Y(:)];
-NNeighbor = sum(adjIndices~=nLdmk+1,2);
 
 % precompute the distance to center used in case of end points landmarks
-hoodDist  =   abs(complex(X,Y));
+hoodDistPre  =   abs(complex(X,Y));
 
-% hoodAngle = angle(complex(X,Y));
+%  hoodAngle = angle(complex(X,Y));
 
 % gaussian filter for the
 hg = fspecial('gaussian', [3 3], 2);
+%%
+if boolOutputVis
+    out.metric    = nan(size(img));
+    out.distance  = nan(size(img));
+    out.curvature = nan(size(img));
+    out.total     = nan(size(img));
+else
+    out.metric    = [];
+    out.distance  = [];
+    out.curvature = [];
+    out.total     = [];
+end
 
 %% iteration loop
-for iter= 1:20 %iterations
+ldmkHistory = cell(nIterMax+1,1);
+ldmkHistory{1} = ldmkMoving;
+for iter= 1:nIterMax %iterations
+    if boolOutputVis && strcmp(strVis,'last')
+        out.metric{1}    = nan(size(img));
+        out.distance{1}  = nan(size(img));
+        out.curvature{1} = nan(size(img));
+        out.total{1}     = nan(size(img));
+    end
+    
+    % estimate the centroid size: average distance to the center
+    centroidAvDist = mean(sqrt(sum(bsxfun(@minus, ldmkMoving, mean(ldmkMoving,1)).^2,2)));
+    
     ldmkMovingOld = ldmkMoving;
-    for p = ldmkIdx
-        if iter==2
-            1;
-        end
-        hoodCoordTmp = bsxfun(@plus, hoodCoord, ldmkMoving(p,:));
-        adjLdmkTmp = ldmkMoving(adjIndices(p,:),:);
+    for p = idxLdmkOrderFull
         
+        HCoordTmp = bsxfun(@plus, hoodCoord, ldmkMoving(p,:));
+        
+        %% distance
         % pair distance between adjascent points and all neighboring points
-        D = pdist2(hoodCoordTmp, adjLdmkTmp);
-        D = bsxfun(@minus, D , adjDist(p,:));
-        D(isnan(D)) = 0;
-        
-        % average the distance
-        hoodCont(:) = sum(abs(D),2)/NNeighbor(p);
-
-        % different calculations depending on the number of neighbor
-        adjLdmkTmpPerm= permute(adjLdmkTmp(:,:),[3 2 1]);
-        switch NNeighbor(p)
-            case 1
-                % to improve ? perpendicular to the vector ?
-                hoodCurv(:) = hoodDist(:);
-
-            case 2
-                % vector between ldmk and adjascent ldmks
-                V = bsxfun(@plus, -hoodCoordTmp, adjLdmkTmpPerm(1,:,[1 2]));
-            % calulate the oriented angle bt these
-                % dot and corss product
-                vDot = sum(prod(V,3),2);
-                vCross = diff(V(:,[2 1],1).*V(:,:,2),1,2);
-                % get the angle
-                tmp = atan2(vCross, vDot);
-
-                % warp it to that the results are comparible
-                tmp = mod(tmp- adjCurve(p,1),2*pi);
-                hoodCurv(:) = min(2*pi-tmp,tmp);
-
-            case 3
-                V = bsxfun(@plus, -hoodCoordTmp, adjLdmkTmpPerm(1,:,[1 2]));
-                vDot = sum(prod(V,3),2);
-                vCross = diff(V(:,[2 1],1).*V(:,:,2),1,2);
-                tmp = atan2(vCross, vDot);
-                tmp = mod(tmp- adjCurve(p,1),2*pi);
-
-                V = bsxfun(@plus, -hoodCoordTmp, adjLdmkTmpPerm(1,:,[2 3]));
-                vDot = sum(prod(V,3),2);
-                vCross = diff(V(:,[2 1],1).*V(:,:,2),1,2);
-                tmp2 = atan2(vCross, vDot);
-                tmp2 = mod(tmp2- adjCurve(p,2),2*pi);
-
-                % averagea of the two angles
-                hoodCurv(:) = (min(2*pi-tmp ,tmp ) + ...
-                               min(2*pi-tmp2,tmp2)   )/2;
-            otherwise
-                error('oups')
+        if ldmkClass(p) == 1 || ldmkClass(p) == 2 % for cross points and end points
+            
+            adjLdmkTmp = ldmkMoving(distIdx{p},:);
+            
+             % get the  distance relative to centroid size
+            D = pdist2(HCoordTmp, adjLdmkTmp) / centroidAvDist;
+            
+            % difference to the expected one
+            D = bsxfun(@minus, D , distSubVal{p});
+            
+            % average the distance
+            hoodDist(:) = mean(bsxfun(@times, abs(D), distSubWeight{p}),2);
+            
+        else % for semi landmarks
+            
+            % overall distance of the segment
+            Dtmp = squareform(pdist(ldmkMoving(segments{ixSegment(p)},:)));
+            sgmDist = sum(Dtmp(diag(ones(1,numel(segments{ixSegment(p)})-1),1)>0));
+            
+            % distance to neighbor
+            adjLdmkTmp = ldmkMoving(segmentAdj(p,:),:);
+            D = pdist2(HCoordTmp, adjLdmkTmp);
+            D = bsxfun(@minus, D , segmentAdjrelDist(p,:)*sgmDist );
+            hoodDist(:) = mean(abs(D(:,1)),2);
         end
-
+        
+        %% curvature
+        if ldmkClass(p) ==1 || ldmkClass(p) ==2
+            hoodCurv(:) = 0;
+            if ~isempty(curvIdx{p})
+                for n = 1:size(curvIdx{p},1)
+                    adjLdmkTmp = permute(ldmkMoving(curvIdx{p}(n,:),:), [3 2 1]);
+                    hoodCurv(:) = hoodCurv(:) + ...
+                        f_AgDiff(HCoordTmp, adjLdmkTmp, curvSubVal{p}(n)) * curvSubWeight{p}(n);
+                end
+            else
+                hoodCurv(:) = hoodDistPre(:);
+            end
+            
+        else
+            % calculation for semi ldmk only based on adjacency neighborhood
+            hoodCurv(:) = 0;
+            for n = 1:size(adjIdx{p},1)
+                adjLdmkTmp = permute(ldmkMoving(adjIdx{p}(n,:),:), [3 2 1]);
+                hoodCurv(:) = hoodCurv(:) + ...
+                    f_AgDiff(HCoordTmp, adjLdmkTmp, adjCurveVal{p}(n)) * adjCurveWeight{p}(n);
+            end
+            
+        end
+        
+        %% find minimum
         % normalize curvature and distance
-        hoodCont = hoodCont/max(hoodCont(:));
+        hoodDist = hoodDist/max(hoodDist(:));
         hoodCurv = hoodCurv/max(hoodCurv(:));
 
         
@@ -190,25 +274,39 @@ for iter= 1:20 %iterations
         hoodCorr(iY,iX) = corrImages(yWindows(iY), xWindows(iX), p);
 
         % final matrix
-        tmp = paramPerLdmk(p,1) * hoodCont + ...
-              paramPerLdmk(p,2) * hoodCurv + ...
-              paramPerLdmk(p,3) * hoodCorr;
+        tmp = (weights(p,1) * hoodDist + ...
+               weights(p,2) * hoodCurv + ...
+               weights(p,3) * hoodCorr)./sum(weights(p,:));
 
         tmp = filter2(hg,tmp, 'same');
         m = max(tmp(:));
         tmp([1 end],1:end) = m;
         tmp(1:end,[1 end]) = m;
 
+        
+        if boolOutputVis && ((strcmp(strVis,'init') && iter ==1) || strcmp(strVis,'last'))
+            Xtmp = X(1,:) + ldmkMoving(p,1);
+            Ytmp = Y(:,1) + ldmkMoving(p,2);
+            
+            out.metric(Ytmp,Xtmp)    = hoodCorr;
+            out.distance(Ytmp,Xtmp)  = hoodDist;
+            out.curvature(Ytmp,Xtmp) = hoodCurv;
+            out.total(Ytmp,Xtmp)     = tmp;
+        end
+
         % find the best position and move the landmark
-        [~,iMin] = min(tmp(:));
-        ldmkMoving(p,:) = ldmkMoving(p,:) + [X(iMin), Y(iMin)];
+        if ismember(p,idxLdmkOrder)
+            [~,iMin] = min(tmp(:));
+            ldmkMoving(p,:) = ldmkMoving(p,:) + [X(iMin), Y(iMin)];
+        end
         
         %% plot (optional)
-        if plotEachLandmark%  && (p==12) % || p ==14)
+        if plotEachLandmark %&& (p==1) % || p ==14)
             xWindows = X(1,:) + ldmkMovingOld(p,1);
             yWindows = Y(:,1) + ldmkMovingOld(p,2);
             current = ldmkMovingOld(p,:);
-            figure(2)
+            
+            subplot(2,3,1)
             imagesc(xWindows, yWindows, tmp)
             hold on
             scatter(current(1), current(2),'+','w');
@@ -217,7 +315,7 @@ for iter= 1:20 %iterations
             axis equal tight
             title('total')
 
-            figure(3)
+            subplot(2,3,2)
             imagesc(xWindows, yWindows, hoodCurv)
             hold on
             scatter(current(1), current(2),'+','w');
@@ -226,8 +324,8 @@ for iter= 1:20 %iterations
             axis equal tight
             title('curv')
 
-            figure(4)
-            imagesc(xWindows, yWindows, hoodCont)
+            subplot(2,3,3)
+            imagesc(xWindows, yWindows, hoodDist)
             hold on
             scatter(current(1), current(2),'+','w');
             scatter(ldmkMoving(p,1), ldmkMoving(p,2),'+','r');
@@ -235,7 +333,7 @@ for iter= 1:20 %iterations
             axis equal tight
             title('dist')
 
-            figure(5)
+            subplot(2,3,4)
             imagesc(xWindows, yWindows, hoodCorr)
             hold on
             scatter(current(1), current(2),'+','w');
@@ -244,7 +342,7 @@ for iter= 1:20 %iterations
             axis equal tight
             title('corr')
 
-            figure(6)
+            subplot(2,3,5)
             imagesc(xWindows, yWindows, imgFilter(yWindows,xWindows))
             hold on
             scatter(current(1), current(2),'+','g');
@@ -253,31 +351,47 @@ for iter= 1:20 %iterations
             axis equal tight
             title('image')
 
-            figure(7)
-            imagesc(templates(:,:,p))
+            subplot(2,3,6)
+            imagesc(templates{p})
             hold on
-            scatter(16, 16,'+','r');
+            scatter(size(templates{p},2)/2, size(templates{p},1)/2,'+','r');
             hold off
             axis equal tight
             title('template')
         end
     end 
-
+    ldmkHistory{iter+1} = ldmkMoving;
 
     % stop criterion
-    
-    if sum(sqrt(sum((ldmkMovingOld(1:end-1,:)-...
-                     ldmkMoving(1:end-1,:)  ).^2,2))) < 1
+    if sum(sqrt(sum((ldmkMovingOld - ldmkMoving ).^2,2))) < 1
         break
     end
-end
     
-ldmkMoving = ldmkMoving(1:end-1,:);
+end
+
+ldmkHistory = cell2mat(reshape(ldmkHistory(1:iter+1),1,1,[]));
+    
     
     
 end
 
+function anglDiff = f_AgDiff(HoodCoordinate, adjascentPos, expectedAngle)
 
+% vector between ldmk and adjascent ldmks
+V = bsxfun(@plus, -HoodCoordinate, adjascentPos);
+
+% calulate the oriented angle bt these
+% dot and cross product
+vDot = sum(prod(V,3),2);
+vCross = diff(V(:,[2 1],1).*V(:,:,2),1,2);
+    
+% get the angle
+anglDiff = atan2(vCross, vDot);
+    
+% warp it to that the results are comparible
+anglDiff = fAngularDiff(anglDiff, expectedAngle);
+
+end
 
 
 

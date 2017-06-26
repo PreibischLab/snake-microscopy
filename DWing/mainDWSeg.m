@@ -3,7 +3,6 @@
 % Script that sets the snake method used and the parameters
 % and start the process by calling the function that will initialize the desired snake 
 
-clc;    % Clear the command window.
 clear; % Clear workspace variables.
 close all;  % Close all figures
 
@@ -20,6 +19,7 @@ landmarkPost = '.txt';
 templateName = 'template_affine.tif';
 landmarkName  = ['template_affine' landmarkPost];
 adjacencyName = 'template_affine_points_adj.txt';
+segmentsName = 'template_affine_points_segments.txt';
 
 snakeGif = 'snakeGif.gif';
 
@@ -27,8 +27,8 @@ snakeGif = 'snakeGif.gif';
 template  = imread(  [folder          templateName ]);
 landmarks = dlmread( [folderLandmarks landmarkName],  ' ');
 adjTmp    = dlmread( [folderLandmarks adjacencyName], ' ');
-
-
+sgmTmp    = dlmread( [folderLandmarks segmentsName], ' ');
+nLdmk = size(landmarks,1);
 %% VIS **** display template and landmark numberd
 clf
 figure(1)
@@ -71,19 +71,45 @@ for i=1:size(adjTmp,1)
     pause
 end
 
-%% check and reorder ajacency matrix
+%% check and reorder adjacency matrix
 [m, ix] = ismember(1:size(landmarks,1), adjTmp(:,1));
 if sum(~m)>0
     fprintf('landmarks: [ ');
     fprintf('%d ',find(~m));
     fprintf('] not found in adjacency file.\n')
 end
+
 adjacency = adjTmp(ix,2:end);
-adjacency(adjacency ==0 ) = NaN;
+adjacency = arrayfun(@(x) adjacency(x,adjacency(x,:)~=0), (1:size(adjacency,1))','Unif',false); 
 
-crossPoints = sum(adjacency>0,2) == 3;
+ldmkClass = zeros(size(adjacency,1),1);
+tmp = cellfun(@numel, adjacency);
+crossPoints = tmp == 3;
+ldmkClass(crossPoints) = 1;
+ldmkClass(tmp == 1) = 2; %endpoints
+ldmkClass(tmp == 2) = 3;% semi
 
-%% **** VIS: correct landmark position of the template
+%% check and reorder segments matrix
+
+segments = arrayfun(@(x) sgmTmp(x,sgmTmp(x,:)~=0), (1:size(sgmTmp,1))','Unif',false); 
+% set the points equidistant
+segmentsPos = cell(size(segments));
+for i=1:numel(segments)
+    segmentsPos{i} = linspace(0,1,numel(segments{i}));
+end
+
+%% get neighborhood for landmarks from semgents
+bigAdjTmp = cell2mat(cellfun(@(x) [x(1) x(end)],segments,'Unif',false));
+LbigDist = cell(size(landmarks,1),1);
+LbigAngle = cell(size(landmarks,1),1);
+for i=1:size(landmarks,1)
+    LbigDist{i}  = setdiff(unique(bigAdjTmp(sum(bigAdjTmp==i,2)>0,:)),i);
+    if numel(LbigDist{i})>1
+        LbigAngle{i} = [LbigDist{i}(1:end-1) LbigDist{i}(2:end)];
+    end
+end
+
+%% **** GUI: correct landmark position of the template
 clf
 imagesc(template)
 axis equal tight
@@ -92,86 +118,111 @@ hPoints = cell(size(landmarks,1),1);
 for i=1:size(landmarks,1)
     hPoints{i} = impoint(gca, landmarks(i,:));
 end
-%% rewrite the landmarks
+%% **** GUI: rewrite the landmarks
 landmarkNew = zeros(size(landmarks));
 for i=1:size(landmarks,1)
     landmarkNew(i,:) = hPoints{i}.getPosition();
 end
 
-%% initialize graphs
-figure(1)
-% plot template
-subplot(1,3,1);
-imagesc(template); 
-colormap('gray')
-set(gca,'xtick',[])
-set(gca,'ytick',[])
-hold on;
-scatter(landmarks(:,1), landmarks(:,2), '+', 'b');
-hold off
-pos = get(gca, 'Position');
-pos(1) = 0;
-pos(3) = 0.33;
-set(gca, 'Position', pos);
-axis equal tight
-
-% plot image with initial landmark position
-subplot(1,3,2);
-imagesc(img); 
-colormap('gray')
-set(gca,'xtick',[])
-set(gca,'ytick',[])
-hold on
-scatter(landmarks(:,1), landmarks(:,2), '+', 'r');
-hold off
-
-pos = get(gca, 'Position');
-pos(1) = 0.33;
-pos(3) = 0.33;
-set(gca, 'Position', pos)
-axis equal tight
-
-% plot image
-subplot(1,3,3);
-imagesc(img); 
-colormap('gray')
-set(gca,'xtick',[])
-set(gca,'ytick',[])
-
-pos = get(gca, 'Position');
-pos(1) = 0.66;
-pos(3) = 0.33;
-set(gca, 'Position', pos)
-axis equal tight
-
 %% base paramters
 
-templateSize = 32; % template size for template matching
+templateSize = 60; % template size for template matching
 sigma  = 3;   % Gaussian filter sigma (Standard Deviation)
 
 % Choosing hood size to which a point can move per iteration
 % (1->3x3, 2->5x5... 30-> 61x61)
 hoodSize = 50;
+bLearnFromStack = true(1);
 
 %% extract the smoothed neighborhood of each landmark
-templates = createTemplateImages(template, landmarks, sigma, templateSize);
+if bLearnFromStack
+    fol = [folder 'wrapped/'];
+    listWrapped = dir([fol '*.tif']);
+    listWrapped = {listWrapped.name}';
+    Istack = cell(1,1,numel(listWrapped));
+    G = fspecial('gaussian',[5 5],sigma);
+    for i=1:numel(listWrapped)
+        Istack{i} = imread([fol listWrapped{i}]);
+        Istack{i} = imfilter(Istack{i},G,'same');
+    end
+    Istack = cell2mat(Istack);
+    templates = createTemplateImages(mean(Istack,3), landmarks, 0.01, templateSize);
+%     figure
+%     imagesc(mean(Istack,3))
+else
+    templates = createTemplateImages(template, landmarks, sigma, templateSize);
+end
 
+%%
+fLearnTemplate(Istack, landmarks, ldmkClass, sigma);
+
+%% read landmarks stack
+if bLearnFromStack
+    fol = [folderLandmarks 'corrected/'];
+    txtList = dir([fol 'brightfield*.txt']);
+    txtList = {txtList.name}';
+    landmarksStack = cell(numel(txtList),1);
+    for i=1:numel(txtList)
+        landmarksStack{i} = dlmread( [fol txtList{i}],  ',');
+    end
+    landmarksStack = reshape(landmarksStack,1,1,[]);
+    landmarksStack = cat(3,landmarksStack{:});
+else
+    % take the template
+    landmarksStack = landmarks;
+end
 %% compute the shape model based on the template landmarks
-shapeModel = fEstimateShapeModel(landmarks, adjacency);
-
 % [alphas betas gammas]
 % Alpha - weight of elasticity for list of points (distance)
 % Beta  - weight of curvature (abs angular difference)
 % Gamma - weight of ext force
-semiLdmkParams = [ 0.5   1     0.8 ];
-LdmkParams     = [ 0.16   0.3   1   ];
-
-shapeModel.paramPerLdmk = zeros(size(landmarks,1),3);
-shapeModel.paramPerLdmk(crossPoints ,:) = repmat(LdmkParams,    sum( crossPoints),1);
-shapeModel.paramPerLdmk(~crossPoints,:) = repmat(semiLdmkParams,sum(~crossPoints),1);
-shapeModel.paramPerLdmk(14,:) = [0.1, 0.3, 1.2];
-shapeModel.paramPerLdmk(1,:) = [0.1, 0.3, 1.2];
-
+weights = [ 0.2   0.2   1   ;...% LdmkParams
+            0.5   1     0.8 ;...% end points
+            1     0.5   1.5  ]; % semiLdmkParams
+if bLearnFromStack
+    shapeModel = fEstimateShapeModel(landmarksStack, ldmkClass, weights,...
+                                     segments, segmentsPos, adjacency);
+    
+else
+    shapeModel = fEstimateShapeModel(landmarksStack, ldmkClass, weights,...
+                                     segments, segmentsPos,...
+                                     adjacency, LbigDist, LbigAngle);
+end
+%% VIS***:show the neighbor selection
+for i=1:size(landmarks,1)
+    fprintf('Point %d\n', i);
+    clf
+    imagesc(template)
+    axis equal tight
+    colormap('gray')
+    hold on
+    scatter(landmarks(:,1),landmarks(:,2), 60, [1, 0, 0],'+')
+    scatter(landmarks(i,1),landmarks(i,2), 60, [0, 0, 1],'+')
+    text(landmarks(:,1)+10,...
+         landmarks(:,2)-10,...
+         cellstr(num2str((1:size(landmarks,1))')),...
+         'Color', [0.6 0 0],... 
+         'FontWeight', 'bold')
+     hold off
+     %%
+     adjC = shapeModel.curvIdx{i};
+     adjD = shapeModel.distIdx{i};
+     col = {'b','r','g','m'};
+%     for j=1:size(adjC,1)
+%         line(landmarks([i adjC(j,1) ],1)+4*(j-1),...
+%              landmarks([i adjC(j,1) ],2)+4*(j-1),...
+%              'Color', col{j}) 
+%         line(landmarks([i adjC(j,2) ],1)+4*(j-1),...
+%              landmarks([i adjC(j,2) ],2)+4*(j-1),...
+%              'Color', col{j}) 
+%     end
+    for j=1:numel(adjD)
+        line(landmarks([i adjD(j) ],1),...
+             landmarks([i adjD(j) ],2),...
+             'Color', col{j})
+    end
+    pause
+end
 
 
 %% list images to process
@@ -180,17 +231,19 @@ imgList = {imgList.name}';
 imgList = imgList(~cellfun(@isempty, strfind(imgList,fileNamePre)));
 
 %% Initialize figures (run if needed)
-for i=2:5
-    figure(i)
-    clf
-    colormap(map)
+figure(2)
+clf
+for i=1:4
+    h = subplot(2,3,i);
+    colormap(h,map)
 end
-figure(6)
-colormap('gray')
-figure(7)
-colormap('gray')
+h = subplot(2,3,5);
+colormap(h, 'gray')
+h = subplot(2,3,6);
+colormap(h, 'gray')
 
 %% run the snake %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+folTmp = '/media/badboy/DATA/taf/test/samples/909_registered/test_vis/';
 fprintf('+ Processing image             ')
 for i=1:numel(imgList)
     str=[num2str(i) '/' num2str(numel(imgList)) ];
@@ -198,26 +251,48 @@ for i=1:numel(imgList)
     pause(0.001)
     
     img       = imread(  [folder imgList{i}]);
-    ldmkMoving = startIterations(img, shapeModel, landmarks,...
-                                      templates , hoodSize   );
+    [ldmkMoving, ~] = startIterations(img, shapeModel,...
+                                        templates , hoodSize  );
                             
     % write the landmark file
     [~,n] = fileparts(imgList{i});
     dlmwrite([folderLandmarks n landmarkPost] ,ldmkMoving,' ');
 end 
 fprintf('\b -> done\n');
+%% run the for the output  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+fprintf('+ Processing image             ')
+for i=1:numel(imgList)
+    str=[num2str(i) '/' num2str(numel(imgList)) ];
+    fprintf([repmat('\b',[1 , length(str)+1 ]) str '\n'])
+    pause(0.001)
     
-%% write a representation of images+ landmark marked in red
+    img       = imread(  [folder imgList{i}]);
+    [ldmkMoving, out] = startIterations(img, shapeModel, landmarks,...
+                                        templates , hoodSize    );
+                            
+    % write the landmark file
+    [~,n] = fileparts(imgList{i});
+    f = fieldnames(out);
+    for j=1:numel(f)
+        Iaff = out.(f{j});
+        
+        imwrite(Iaff,mapTmp,[folderLandmarks n landmarkPost])
+        
+    end
+    dlmwrite([folderLandmarks n landmarkPost] ,ldmkMoving,' ');
+end 
+fprintf('\b -> done\n');
+%% write a representation of images + landmark marked in red
 M = ...
 [ 0 0 1 1 1 1 1 0 0 ;....
   0 0 0 1 1 1 0 0 0 ;....
-  0 0 0 1 1 1 0 0 0 ;....
+  1 0 0 1 1 1 0 0 1 ;....
   1 1 1 0 0 0 1 1 1 ;....
   1 1 1 0 0 0 1 1 1 ;....
   1 1 1 0 0 0 1 1 1 ;....
+  1 0 0 1 1 1 0 0 1 ;....
   0 0 0 1 1 1 0 0 0 ;....
-  0 0 0 1 1 1 0 0 0 ;....
-  0 0 0 1 1 1 0 0 0 ]>0;
+  0 0 1 1 1 1 1 0 0 ]>0;
 
 for i=1:numel(imgList)
     str=[num2str(i) '/' num2str(numel(imgList)) ];
@@ -242,23 +317,136 @@ for i=1:numel(imgList)
     imwrite(I, [folder 'test/' imgList{i}])
 end
 
-%% rerun the snake on a single image
-for i=2:5
-    figure(i)
-    clf
-    colormap(map)
+%% Procruste superimposition
+% reads the landmarks from file
+LdmkStack = cell(numel(imgList),1);
+for i=1:numel(LdmkStack)
+    [~,n] = fileparts(imgList{i});
+    LdmkStack{i} = dlmread( [folderLandmarks n landmarkPost],  ',');
 end
-figure(6), clf
-colormap('gray')
-figure(7), clf
-colormap('gray')
 
-imgName = 'brightfield_affine00009.tif';
-img       = imread(  [folder imgName]);
-ldmkMoving = startIterations(img, shapeModel, landmarks,...
-                                  templates , hoodSize   );
-    
+% run the procruste superimposition
+[SupDissim,SupData, SupTform] =  fProcrustesSupp(LdmkStack, false);
+
+% average shape
+
+
+%% point pairs
+PPairs = [reshape(repmat((1:size(adjacency))',1,size(adjacency,2)),[],1) reshape(adjacency,[],1)];
+PPairs = PPairs(~any(isnan(PPairs),2),:);
+PPairs = sort(PPairs,2);
+PPairs = unique(PPairs, 'rows');
+
+%% plot shape for all individuals (procruste)
+clf
+mapD = fDistingColors(40,[1 1 1]);
+clf
+for i=1:numel(SupData)
+    for j=1:size(PPairs,1)
+        line(SupData{i}(PPairs(j,:),1),SupData{i}(PPairs(j,:),2),'Color',mapD(i,:))
+    end
+end
+set(gca,'Ydir','reverse')
+axis equal tight
+hl = axis;
+hl([1 3]) = hl([1 3]) - d;
+hl([2 4]) = hl([2 4]) + d;
+axis(hl)
+%% plot points + model  (procruste)
+Mldmk = cell2mat(reshape(SupData,1,1,[]));
+avLdmks = mean(Mldmk,3);
+clf
+for i=1:numel(SupData)
+    scatter(SupData{i}(:,1),SupData{i}(:,2),50, mapD(i,:), '+')
+    hold on
+end
+d = diff(reshape(hl,2,2),1, 1)*0.1;
+set(gca,'Ydir','reverse')
+axis equal tight
+hl = axis;
+hl([1 3]) = hl([1 3]) -d;
+hl([2 4]) = hl([2 4]) +d;
+axis(hl)
+
+% draw adjacency lines
+for i=1:size(PPairs,1)
+    line(avLdmks(PPairs(i,:),1),avLdmks(PPairs(i,:),2), 'Color', [0 0 0])
+end
+%% plot points + model for initial registration (initReg)
+clf
+Mldmk = cell2mat(reshape(LdmkStack,1,1,[]));
+avLdmks = mean(Mldmk,3);
+
+for i=1:numel(LdmkStack)
+    scatter(LdmkStack{i}(:,1),LdmkStack{i}(:,2),50, mapD(i,:), '+')
+    hold on
+end
+d = diff(reshape(hl,2,2),1, 1)*0.1;
+set(gca,'Ydir','reverse')
+axis equal tight
+hl = axis;
+hl([1 3]) = hl([1 3]) -d;
+hl([2 4]) = hl([2 4]) +d;
+axis(hl)
+
+% draw adjacency lines
+for i=1:size(PPairs,1)
+    line(avLdmks(PPairs(i,:),1),avLdmks(PPairs(i,:),2), 'Color', [0 0 0])
+end
+%% plot shape for all individuals (initReg)
+clf
+mapD = fDistingColors(40,[1 1 1]);
+clf
+for i=1:numel(LdmkStack)
+    for j=1:size(PPairs,1)
+        line(LdmkStack{i}(PPairs(j,:),1),LdmkStack{i}(PPairs(j,:),2),'Color',mapD(i,:))
+    end
+end
+set(gca,'Ydir','reverse')
+axis equal tight
+hl = axis;
+hl([1 3]) = hl([1 3]) -d;
+hl([2 4]) = hl([2 4]) +d;
+axis(hl)
+
+%% rerun the snake on a single image
+figure(2)
+clf
+for i=1:4
+    h = subplot(2,3,i,'replace');
+    colormap(h,map)
+end
+h = subplot(2,3,5);
+colormap(h, 'gray')
+h = subplot(2,3,6);
+colormap(h, 'gray')
 %%
+imgName = 'brightfield_affine00004.tif';
+img       = imread(  [folder imgName]);
+[ldmkMoving, out, ldmkHist] = startIterations( img, shapeModel,...
+                                     templates, hoodSize   );
+%%
+figure(1)
+colormap(map)
+imagesc(out.total), axis equal tight
+hold on
+scatter(ldmkMoving(1:end-1,1),ldmkMoving(1:end-1,2),70, 'r','+')
+scatter(ldmkMovingOld(1:end-1,1),ldmkMovingOld(1:end-1,2),70, 'w','+')
+hold off
+%%
+
+figure(1)
+colormap('gray')
+imagesc(img), axis equal tight
+hold on
+for i=1:size(ldmkHist,1)
+    plot(reshape(ldmkHist(i,1,:),[],1),...
+         reshape(ldmkHist(i,2,:),[],1),...
+         'r','LineWidth',2)
+end
+hold off
+
+%% draggalbe points on the last created landmarks
 clf
 imagesc(img)
 axis equal tight
@@ -267,7 +455,8 @@ hPoints = cell(size(ldmkMoving,1),1);
 for i=1:size(ldmkMoving,1)
     hPoints{i} = impoint(gca, ldmkMoving(i,:));
 end
-%%
+
+%% ***** VIS: plot the numbered landmarks
 figure(1)
 clf
 imagesc(img)
@@ -286,7 +475,7 @@ hold off
 
 %% **** VIS: correct landmark position
 clf
-imgName = 'brightfield_affine00001.tif';
+imgName = 'brightfield_affine00004.tif';
 [~,n] = fileparts(imgName);
 I = imread([folder imgName]);
 ldmkMoving = dlmread( [folderLandmarks n landmarkPost],  ',');
