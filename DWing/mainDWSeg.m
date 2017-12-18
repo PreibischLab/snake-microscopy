@@ -154,7 +154,7 @@ else
 end
 
 %%
-fLearnTemplate(Istack, landmarks, ldmkClass, sigma);
+% fLearnTemplate(Istack, landmarks, ldmkClass, sigma);
 
 %% read landmarks stack
 if bLearnFromStack
@@ -188,6 +188,7 @@ else
                                      segments, segmentsPos,...
                                      adjacency, LbigDist, LbigAngle);
 end
+
 %% VIS***:show the neighbor selection
 for i=1:size(landmarks,1)
     fprintf('Point %d\n', i);
@@ -242,7 +243,7 @@ colormap(h, 'gray')
 h = subplot(2,3,6);
 colormap(h, 'gray')
 
-%% run the snake %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% run the snake and save landmarks %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 folTmp = '/media/badboy/DATA/taf/test/samples/909_registered/test_vis/';
 fprintf('+ Processing image             ')
 for i=1:numel(imgList)
@@ -259,7 +260,7 @@ for i=1:numel(imgList)
     dlmwrite([folderLandmarks n landmarkPost] ,ldmkMoving,' ');
 end 
 fprintf('\b -> done\n');
-%% run the for the output  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% run the snake and save landmark and synthetic output  %%%%%%%%%%%%%%%%%%%
 fprintf('+ Processing image             ')
 for i=1:numel(imgList)
     str=[num2str(i) '/' num2str(numel(imgList)) ];
