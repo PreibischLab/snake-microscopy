@@ -148,7 +148,7 @@ sbigHood = size(xIdx,2);
 corrImages = -ones(size(yIdx,2),size(xIdx,2),nLdmk);
 G = fspecial('gaussian',[5 5],sigma);
 imgFilter = imfilter(img,G,'same');
-for p = 1:nLdmk
+for p = ldmkIdx
     iX = (xIdx(p,:)>0) & (xIdx(p,:)<=size(img,1));
     ixIdx(p,:) = iX;
     iY = (yIdx(p,:)>0) & (yIdx(p,:)<=size(img,2));
