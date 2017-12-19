@@ -134,9 +134,9 @@ idxLdmkOrderFull = [idxLdmkOrder setdiff(1:nLdmk,idxLdmkOrder)];
 
 %%  precalculate the correlation image for each landmark point:
 % big neighborhood of each point: max searching area (for sake of speed)
-xIdx = zeros(nLdmk, bigHood*2+1);
+xIdx  = zeros(nLdmk, bigHood*2+1);
 ixIdx = zeros(nLdmk, bigHood*2+1);
-yIdx = zeros(nLdmk, bigHood*2+1);
+yIdx  = zeros(nLdmk, bigHood*2+1);
 iyIdx = zeros(nLdmk, bigHood*2+1);
 for p = ldmkIdx
     xIdx(p,:) = ((-bigHood):(bigHood)) + ldmkMoving(p,1);
