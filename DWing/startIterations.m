@@ -38,7 +38,7 @@
 
 
 
-function [ldmkMoving, out, ldmkHistory] = startIterations(img, shapeModel, templates, hoodSize, ldmkIdx)
+function [ldmkMoving, out, ldmkHistory] = startIterations(img, shapeModel, templates, hoodSize, ldmkIdx, userStartPosition)
 
 boolOutputVis = nargout > 1;
 % strVis = 'last';
@@ -73,7 +73,11 @@ curvSubWeight   = shapeModel.curvSubWeight;
 processOrder    = shapeModel.processOrder;
 % centroidAvDist  = shapeModel.centroidAvDist;
 
-startPosition = shapeModel.startPosition;
+if (exist('userStartPosition','var') && ~isempty(userStartPosition))
+    startPosition = round(userStartPosition);
+else
+    startPosition = round(shapeModel.startPosition);
+end
 
 % normalize the relative weight
 adjCurveWeight = cellfun(@(x) x/sum(x(:)),adjCurveWeight,'Unif',false);
