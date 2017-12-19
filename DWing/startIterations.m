@@ -44,7 +44,7 @@ boolOutputVis = nargout > 1;
 % strVis = 'last';
 strVis = 'init';
 
-plotEachLandmark = true(1);
+plotEachLandmark = false(1);
 
 %% "hidden" parameters
 nIterMax = 10;
