@@ -32,7 +32,7 @@ if ~force
                 iLdmk = 1;
             end
         case 'downarrow'
-            iLdmk = iLdmk+1;
+            iLdmk = iLdmk-1;
             if iLdmk>size(ldmk,1)
                 iLdmk = size(ldmk,1);
             end
