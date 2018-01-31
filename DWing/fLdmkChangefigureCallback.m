@@ -36,7 +36,7 @@ if ~force
             if iLdmk<1
                 iLdmk = 1;
             end
-        case 's'
+        case {'s' 'control' 'numpad0' 'insert'}
             if exist('hPoint','var') && (~isempty(hPoint))
                 P = round(hPoint.getPosition());
                 LdmkStack{iImg,2}(iLdmk,:) = round(P); 
