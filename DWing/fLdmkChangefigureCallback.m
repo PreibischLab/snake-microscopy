@@ -41,7 +41,7 @@ if ~force
                 P = round(hPoint.getPosition());
                 LdmkStack{iImg,2}(iLdmk,:) = round(P); 
                 assignin('base', 'LdmkStack', LdmkStack);
-                boolRefresh = false;
+                boolRefresh = true;
             end
         otherwise
             boolRefresh = false;
