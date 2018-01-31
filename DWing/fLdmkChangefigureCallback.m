@@ -28,13 +28,13 @@ if ~force
             end
         case 'uparrow'
             iLdmk = iLdmk+1;
-            if iLdmk<1
-                iLdmk = 1;
+            if iLdmk>size(ldmk,1)
+                iLdmk = size(ldmk,1);
             end
         case 'downarrow'
             iLdmk = iLdmk-1;
-            if iLdmk>size(ldmk,1)
-                iLdmk = size(ldmk,1);
+            if iLdmk<1
+                iLdmk = 1;
             end
         case 's'
             if exist('hPoint','var') && (~isempty(hPoint))
