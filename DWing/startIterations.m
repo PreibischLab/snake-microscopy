@@ -57,6 +57,12 @@ segments         = shapeModel.segments;
 relPosInSegments = shapeModel.relPosInSegments;
 weights          = shapeModel.weights;
 
+distPowerFactor  = shapeModel.distPowerFactor;
+distPowerShift   = shapeModel.distPowerShift;
+
+metricPowerFactor = shapeModel.metricPowerFactor;
+metricPowerShift  = shapeModel.metricPowerShift;
+
 % adjacency is used only for curvature
 adjIdx          = shapeModel.adjIndices;
 adjCurveVal     = shapeModel.adjCurveVal;
@@ -260,12 +266,16 @@ for iter= 1:nIterMax %iterations
             
         end
         
-        %% find minimum
         % normalize curvature and distance
         hoodDist = hoodDist/max(hoodDist(:));
         hoodCurv = hoodCurv/max(hoodCurv(:));
-
         
+        % apply power factor
+        k  = distPowerShift(p);
+        k2 = distPowerFactor(p);
+        hoodDist = fRangeNorm((hoodDist+k).^k2,0, 1,k^k2, (1+k)^k2);
+        
+        %% metric
         % coordinates of the square windows around the landmark
         xWindows = X(1,:) + ldmkMoving(p,1) - xIdx(p,1);
         yWindows = Y(:,1) + ldmkMoving(p,2) - yIdx(p,1);
@@ -273,11 +283,15 @@ for iter= 1:nIterMax %iterations
         iY = (yWindows > 0) & (yWindows <= sbigHood);
         
         hoodCorr(:) = 1;
-        % do not normalize the correlation because bad match should not
-        % drive the point movment too much
+        
         hoodCorr(iY,iX) = corrImages(yWindows(iY), xWindows(iX), p);
+        
+        % apply a transfer function to enhance the discrimination of low values
+        k  = metricPowerShift(p);
+        k2 = metricPowerFactor(p);
+        hoodCorr = fRangeNorm((hoodCorr+k).^k2,0,1,k^k2, (1+k)^k2);
 
-        % final matrix
+        %% final matrix
         tmp = (weights(p,1) * hoodDist + ...
                weights(p,2) * hoodCurv + ...
                weights(p,3) * hoodCorr)./sum(weights(p,:));

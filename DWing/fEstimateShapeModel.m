@@ -71,6 +71,28 @@ function shapeModel = fEstimateShapeModel(LandmarkIS, LdmkClass, WeightPerClass,
     endPoints   = shapeModel.ldmkClass==2;
     semiPoints  = shapeModel.ldmkClass==3;
 
+    % power factor for distance
+    shapeModel.distPowerFactor = ones(size(LdmkClass));
+    shapeModel.distPowerShift  = zeros(size(LdmkClass));
+    
+    % 2 power allow less constrains on the distance
+    shapeModel.distPowerFactor( crossPoints ) = 2;
+    shapeModel.distPowerShift(  crossPoints ) = 0.2;
+    
+    % 0.5 power force a big steepness in the distance curve for semi. This
+    % is to put a strong force on the distance
+    shapeModel.distPowerFactor( semiPoints ) = 0.5;
+    shapeModel.distPowerShift(  semiPoints ) = 0;
+    
+
+    % power factor for metric
+    shapeModel.metricPowerFactor = ones(size(LdmkClass));
+    shapeModel.metricPowerShift  = zeros(size(LdmkClass));
+    % set the same for all landmarks (for now) increase the discrimination
+    % on the high correlation values
+    shapeModel.metricPowerFactor( : ) = 0.01;
+    shapeModel.metricPowerShift(  : ) = 0.15;
+    
 
 
     % centroid distance
