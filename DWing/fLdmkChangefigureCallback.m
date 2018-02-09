@@ -1,16 +1,21 @@
 function fLdmkChangefigureCallback(hObject,callbackdata,...
                                    hSubs, iLdmk, iImg, hoodSize,...
                                    Istack, LdmkStack,...
-                                   template, ldmk, force)
-if ~exist('force','var')
+                                   template, ldmk, force, ldmkLocalBestCell)
+if (~exist('force','var')) || isempty(force)
     force = false;
 end
 boolRefresh = true(1);
 persistent hPoint;
-    iLdmk = evalin('base', 'iLdmk');
-    iImg = evalin('base', 'iImg');
-    LdmkStack = evalin('base', 'LdmkStack');
+persistent plotBest;
 
+iLdmk = evalin('base', 'iLdmk');
+iImg = evalin('base', 'iImg');
+LdmkStack = evalin('base', 'LdmkStack');
+bDisplayBest = evalin('base', 'bDisplayBest');
+if isempty(plotBest)
+    plotBest = false;
+end
 % below:
 if ~force
     switch callbackdata.Key
@@ -43,6 +48,10 @@ if ~force
                 assignin('base', 'LdmkStack', LdmkStack);
                 boolRefresh = true;
             end
+            
+        case 'space'
+            plotBest = ~plotBest;
+            
         otherwise
             boolRefresh = false;
     end
@@ -73,7 +82,7 @@ if boolRefresh
     set(hSubs(1),'xtick',[])
     set(hSubs(1),'ytick',[])
     hold on
-    scatter(ldmk(iLdmk,1),ldmk(iLdmk,2),'+','r');
+    scatter(ldmk(iLdmk,1),ldmk(iLdmk,2),'+','b');
     hold off
     axis equal tight
 
@@ -81,8 +90,43 @@ if boolRefresh
     imagesc(cIm,rIm, Istack{iImg}(rIm,cIm));
     set(hSubs(2),'xtick',[])
     set(hSubs(2),'ytick',[])
-    hPoint = impoint(hSubs(2), LdmkStack{iImg, 2}(iLdmk,:));
     axis equal tight
+    if plotBest && exist('ldmkLocalBestCell','var')
+        % shape
+        h = zeros(size(bDisplayBest));
+        strLegend = cell(size(h));
+        if bDisplayBest(1)
+            hold on
+            [~,idx] = sort(ldmkLocalBestCell{iImg}(iLdmk).shape{2});
+            idx = idx(1:min(2, numel(idx)));
+            h(1) = scatter(ldmkLocalBestCell{iImg}(iLdmk).shape{1}(idx,1),...
+                           ldmkLocalBestCell{iImg}(iLdmk).shape{1}(idx,2),300,'+','g');
+            strLegend{1} = 'shape best position';
+            hold off
+        end
+        
+        % metric
+        if bDisplayBest(2)
+            map = [1 0 0; 1 0.5237 0; 1 0.8 0];
+            hold on
+            [~,idx] = sort(ldmkLocalBestCell{iImg}(iLdmk).metric{2});
+            idx = idx(1:min(3, numel(idx)));
+%             idx = MV<=median(MV);
+            h(2) = scatter(ldmkLocalBestCell{iImg}(iLdmk).metric{1}(idx,1),...
+                           ldmkLocalBestCell{iImg}(iLdmk).metric{1}(idx,2),300,map,...
+                        '+');
+            strLegend{2} = 'metric best position';
+            hold off
+        end
+        
+        if any(bDisplayBest)
+            legend(h(bDisplayBest),strLegend)
+        end
+        
+    end
+    hPoint = impoint(hSubs(2), LdmkStack{iImg, 2}(iLdmk,:));
+    hPoint.setColor([82 135 255]/255);
+
     
     assignin('base', 'iLdmk', iLdmk);
     assignin('base', 'iImg', iImg);

@@ -38,7 +38,7 @@
 
 
 
-function [ldmkMoving, out, ldmkHistory] = startIterations(img, shapeModel, templates, hoodSize, ldmkIdx, userStartPosition)
+function [ldmkMoving, out, ldmkHistory, ldmkLocalBest] = startIterations(img, shapeModel, templates, hoodSize, ldmkIdx, userStartPosition)
 
 boolOutputVis = nargout > 1;
 % strVis = 'last';
@@ -199,6 +199,8 @@ else
 end
 
 %% iteration loop
+bLastRun = false;
+ldmkLocalBest = struct('metric',{},'shape',{}, 'total', {});
 ldmkHistory = cell(nIterMax+1,1);
 ldmkHistory{1} = ldmkMoving;
 for iter= 1:nIterMax %iterations
@@ -315,6 +317,39 @@ for iter= 1:nIterMax %iterations
             out.total(Ytmp,Xtmp)     = tmp;
         end
 
+        %% save the local minimums if asked and only for the last run
+        if bLastRun
+            if nargout > 3
+                % local best for total (tmp already calculated)
+                RMins = imregionalmin(tmp);
+                rm = find(RMins);
+                LMin = bsxfun(@plus,[X(rm) Y(rm)], ldmkMoving(p,:));
+                ldmkLocalBest(p).total  = {LMin, tmp(rm)};
+
+                % local best for metric
+                tmp2 = hoodCorr;
+                m = max(tmp2(:));
+                tmp2([1 end],1:end) = m;
+                tmp2(1:end,[1 end]) = m;
+                RMins = imregionalmin(tmp2);
+                rm = find(RMins);
+                LMin = bsxfun(@plus,[X(rm) Y(rm)], ldmkMoving(p,:));
+                ldmkLocalBest(p).metric = {LMin, tmp2(rm)};
+
+                % local best for shape (curvature + distance)
+                tmp2 = weights(p,1) * hoodDist + ...
+                       weights(p,2) * hoodCurv;
+                m = max(tmp2(:));
+                tmp2([1 end],1:end) = m;
+                tmp2(1:end,[1 end]) = m;
+                RMins = imregionalmin(tmp2);
+                rm = find(RMins);
+                LMin = bsxfun(@plus,[X(rm) Y(rm)], ldmkMoving(p,:));
+                ldmkLocalBest(p).shape  = {LMin, tmp2(rm)};
+            end
+        end
+        
+        %% change the position of the landmark
         % find the best position and move the landmark
         if ismember(p,idxLdmkOrder)
             [~,iMin] = min(tmp(:));
@@ -383,9 +418,15 @@ for iter= 1:nIterMax %iterations
     end 
     ldmkHistory{iter+1} = ldmkMoving;
 
-    % stop criterion
-    if sum(sqrt(sum((ldmkMovingOld - ldmkMoving ).^2,2))) < 1
+    if bLastRun
+        % exit the loop
         break
+    end
+    
+    % stop criterion
+    bStop = sum(sqrt(sum((ldmkMovingOld - ldmkMoving ).^2,2))) < 1;
+    if bStop || (iter == nIterMax-1)
+        bLastRun = true;
     end
     
 end
