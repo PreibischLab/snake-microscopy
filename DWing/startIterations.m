@@ -414,6 +414,7 @@ for iter= 1:nIterMax %iterations
             hold off
             axis equal tight
             title('template')
+            pause(0.01)
         end
     end 
     ldmkHistory{iter+1} = ldmkMoving;
