@@ -164,6 +164,9 @@ end
 
 % normalize between 0 and 1 (0 best match, 1 worse match)
 corrImages = 1-(corrImages+1)/2;
+corrImages(corrImages<0) = 0;
+corrImages(corrImages>1) = 1;
+
 
 %% variable initialization and precalculations
 % initialize neighborhood matrices
