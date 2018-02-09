@@ -45,6 +45,24 @@ function shapeModel = fEstimateShapeModel(LandmarkIS, LdmkClass, WeightPerClass,
     shapeModel.startPosition = modelIS;
     
 
+    %% plot
+%     for i=1:size(LandmarkBS, 3)
+%         scatter(LandmarkBS(:,1, i),LandmarkBS(:,2,i),50, '+')
+%         hold on
+%     end
+%     hold off
+%     set(gca,'Ydir','reverse')
+%     axis equal tight
+%     hl = axis;
+%     d = diff(reshape(hl,2,2),1, 1)*0.1;
+%     hl = axis;
+%     hl([1 3]) = hl([1 3]) -d;
+%     hl([2 4]) = hl([2 4]) +d;
+%     axis(hl)
+
+%%
+    
+    
     % find the class of landmarks
     shapeModel.ldmkClass = LdmkClass;
 
