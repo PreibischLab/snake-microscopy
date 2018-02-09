@@ -358,6 +358,7 @@ for iter= 1:nIterMax %iterations
         
         %% plot (optional)
         if plotEachLandmark %&& (p==1) % || p ==14)
+            %%
             xWindows = X(1,:) + ldmkMovingOld(p,1);
             yWindows = Y(:,1) + ldmkMovingOld(p,2);
             current = ldmkMovingOld(p,:);
