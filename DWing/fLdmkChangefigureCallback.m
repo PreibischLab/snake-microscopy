@@ -91,7 +91,7 @@ if boolRefresh
     set(hSubs(2),'xtick',[])
     set(hSubs(2),'ytick',[])
     axis equal tight
-    if plotBest && (exist('ldmkLocalBestCell','var') || isempty(ldmkLocalBestCell))
+    if plotBest && (exist('ldmkLocalBestCell','var') || ~isempty(ldmkLocalBestCell))
         % shape
         h = zeros(size(bDisplayBest));
         strLegend = cell(size(h));
