@@ -38,7 +38,7 @@
 
 
 
-function [ldmkMoving, out, ldmkHistory, ldmkLocalBest] = startIterations(img, shapeModel, templates, hoodSize, ldmkIdx, userStartPosition)
+function [ldmkMoving, out, ldmkHistory, ldmkLocalBest] = startIterations(img, shapeModel, hoodSize, ldmkIdx, userStartPosition)
 
 boolOutputVis = nargout > 1;
 % strVis = 'last';
@@ -48,7 +48,6 @@ plotEachLandmark = false(1);
 
 %% "hidden" parameters
 nIterMax = 10;
-sigma = 3;
 bigHood = 150;
 
 %% get the shape model information
@@ -78,6 +77,14 @@ curvSubWeight   = shapeModel.curvSubWeight;
 
 processOrder    = shapeModel.processOrder;
 % centroidAvDist  = shapeModel.centroidAvDist;
+
+% information for image preprocess
+gHood      = shapeModel.imgProcessHood;
+sigma      = shapeModel.imgProcessSigma;
+topHRadius = shapeModel.imgProcessTopHRadius;
+
+% get templates
+templates = shapeModel.templates;
 
 if (exist('userStartPosition','var') && ~isempty(userStartPosition))
     startPosition = round(userStartPosition);
@@ -152,8 +159,7 @@ sbigHood = size(xIdx,2);
 
 % calculate the cross correlation on the smaller windows
 corrImages = -ones(size(yIdx,2),size(xIdx,2),nLdmk);
-G = fspecial('gaussian',[5 5],sigma);
-imgFilter = imfilter(img,G,'same');
+imgFilter = fProcessImageForSnake(double(img),topHRadius,sigma, gHood);
 for p = ldmkIdx
     iX = (xIdx(p,:)>0) & (xIdx(p,:)<=size(img,1));
     ixIdx(p,:) = iX;
@@ -306,7 +312,8 @@ for iter= 1:nIterMax %iterations
         tmp([1 end],1:end) = m;
         tmp(1:end,[1 end]) = m;
 
-        
+        %% save metric visualization
+        % TODO: use the merging function
         if boolOutputVis && ((strcmp(strVis,'init') && iter ==1) || strcmp(strVis,'last'))
             Xtmp = X(1,:) + ldmkMoving(p,1);
             Ytmp = Y(:,1) + ldmkMoving(p,2);
@@ -363,7 +370,7 @@ for iter= 1:nIterMax %iterations
             yWindows = Y(:,1) + ldmkMovingOld(p,2);
             current = ldmkMovingOld(p,:);
             
-            subplot(2,3,1)
+            subplot(2,4,1)
             imagesc(xWindows, yWindows, tmp)
             hold on
             scatter(current(1), current(2),'+','w');
@@ -372,7 +379,7 @@ for iter= 1:nIterMax %iterations
             axis equal tight
             title('total')
 
-            subplot(2,3,2)
+            subplot(2,4,2)
             imagesc(xWindows, yWindows, hoodCurv)
             hold on
             scatter(current(1), current(2),'+','w');
@@ -381,7 +388,7 @@ for iter= 1:nIterMax %iterations
             axis equal tight
             title('curv')
 
-            subplot(2,3,3)
+            subplot(2,4,3)
             imagesc(xWindows, yWindows, hoodDist)
             hold on
             scatter(current(1), current(2),'+','w');
@@ -390,7 +397,7 @@ for iter= 1:nIterMax %iterations
             axis equal tight
             title('dist')
 
-            subplot(2,3,4)
+            subplot(2,4,4)
             imagesc(xWindows, yWindows, hoodCorr)
             hold on
             scatter(current(1), current(2),'+','w');
@@ -399,7 +406,24 @@ for iter= 1:nIterMax %iterations
             axis equal tight
             title('corr')
 
-            subplot(2,3,5)
+            subplot(2,4,5)
+            imagesc(xWindows, yWindows, img(yWindows,xWindows))
+            hold on
+            scatter(current(1), current(2),'+','g');
+            scatter(ldmkMoving(p,1), ldmkMoving(p,2),'+','r');
+            hold off
+            axis equal tight
+            title('image')
+            
+            subplot(2,4,6)
+            imagesc(templates{p})
+            hold on
+            scatter(size(templates{p},2)/2, size(templates{p},1)/2,'+','r');
+            hold off
+            axis equal tight
+            title('template')
+            
+            subplot(2,4,7)
             imagesc(xWindows, yWindows, imgFilter(yWindows,xWindows))
             hold on
             scatter(current(1), current(2),'+','g');
@@ -408,7 +432,8 @@ for iter= 1:nIterMax %iterations
             axis equal tight
             title('image')
 
-            subplot(2,3,6)
+            
+            subplot(2,4,8)
             imagesc(templates{p})
             hold on
             scatter(size(templates{p},2)/2, size(templates{p},1)/2,'+','r');
