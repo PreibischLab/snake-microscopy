@@ -236,11 +236,11 @@ end
 end
 
 
-% function [curveValInd, curveValAv, curveWeight] = f_Curvature(landmarks, idx)
+% function [curveValInd, curveValAv, curveWeight] = f_Curvature(landmarks, idxAngle)
 % 
 % landmarks: array -> nLdmk x 2 x nIndividuals
 %     landmarks coordinates
-% idx: cell -> nLdmk x 1
+% idxAngle: cell -> nLdmk x 1
 %     index of neighbors
 %     each cell element is nAngles x 2 (index of the landmarks)
 % 
