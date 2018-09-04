@@ -45,6 +45,7 @@ boolOutputVis = nargout > 1;
 strVis = 'init';
 
 plotEachLandmark = false(1);
+boolSaveAll = true(1);
 
 %% "hidden" parameters
 nIterMax = 10;
@@ -193,10 +194,10 @@ hoodDistPre  =   abs(complex(X,Y));
 hg = fspecial('gaussian', [3 3], 2);
 %%
 if boolOutputVis
-    out.metric    = nan(size(img));
-    out.distance  = nan(size(img));
-    out.curvature = nan(size(img));
-    out.total     = nan(size(img));
+    out.metric    = cell(numel(ldmkClass),nIterMax);
+    out.distance  = cell(numel(ldmkClass),nIterMax);
+    out.curvature = cell(numel(ldmkClass),nIterMax);
+    out.total     = cell(numel(ldmkClass),nIterMax);
 else
     out.metric    = [];
     out.distance  = [];
@@ -314,14 +315,11 @@ for iter= 1:nIterMax %iterations
 
         %% save metric visualization
         % TODO: use the merging function
-        if boolOutputVis && ((strcmp(strVis,'init') && iter ==1) || strcmp(strVis,'last'))
-            Xtmp = X(1,:) + ldmkMoving(p,1);
-            Ytmp = Y(:,1) + ldmkMoving(p,2);
-            
-            out.metric(Ytmp,Xtmp)    = hoodCorr;
-            out.distance(Ytmp,Xtmp)  = hoodDist;
-            out.curvature(Ytmp,Xtmp) = hoodCurv;
-            out.total(Ytmp,Xtmp)     = tmp;
+        if boolOutputVis && ((strcmp(strVis,'init') && iter ==1) || strcmp(strVis,'last') || boolSaveAll)            
+            out.metric{p,iter}    = hoodCorr;
+            out.distance{p,iter}  = hoodDist;
+            out.curvature{p,iter} = hoodCurv;
+            out.total{p,iter}     = tmp;
         end
 
         %% save the local minimums if asked and only for the last run
