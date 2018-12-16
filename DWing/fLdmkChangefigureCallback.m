@@ -1,6 +1,6 @@
 function fLdmkChangefigureCallback(hObject,callbackdata,...
-                                   hSubs, iLdmk, iImg, hoodSize,...
-                                   Istack, LdmkStack,...
+                                   hSubs, hoodSize,...
+                                   Istack,...
                                    template, ldmk, force, ldmkLocalBestCell)
 if (~exist('force','var')) || isempty(force)
     force = false;
@@ -10,7 +10,7 @@ persistent hPoint;
 persistent plotBest;
 
 iLdmk = evalin('base', 'iLdmk');
-iImg = evalin('base', 'iImg');
+iImg  = evalin('base', 'iImg');
 LdmkStack = evalin('base', 'LdmkStack');
 bDisplayBest = evalin('base', 'bDisplayBest');
 if isempty(plotBest)
@@ -130,6 +130,7 @@ if boolRefresh
     
     assignin('base', 'iLdmk', iLdmk);
     assignin('base', 'iImg', iImg);
+    evalin('base','fprintf(''%s\n'',imgList{iImg})')
     drawnow;
 end
 
