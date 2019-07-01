@@ -162,11 +162,13 @@ sbigHood = size(xIdx,2);
 corrImages = -ones(size(yIdx,2),size(xIdx,2),nLdmk);
 imgFilter = fProcessImageForSnake(double(img),topHRadius,sigma, gHood);
 for p = ldmkIdx
-    iX = (xIdx(p,:)>0) & (xIdx(p,:)<=size(img,1));
+    iX = (xIdx(p,:)>0) & (xIdx(p,:)<=size(img,2));
     ixIdx(p,:) = iX;
-    iY = (yIdx(p,:)>0) & (yIdx(p,:)<=size(img,2));
+    
+    iY = (yIdx(p,:)>0) & (yIdx(p,:)<=size(img,1));
     iyIdx(p,:) = iY;
-    corrImages(iY,iX,p) = normxcorr2e(templates{p}, imgFilter(yIdx(p,iX),xIdx(p,iY)), 'same');
+    
+    corrImages(iY,iX,p) = normxcorr2e(templates{p}, imgFilter(yIdx(p,iY), xIdx(p,iX)), 'same');
 end
 
 % normalize between 0 and 1 (0 best match, 1 worse match)
